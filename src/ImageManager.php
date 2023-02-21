@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Whiterhino\Imaging;
 
-use App\Types\ImageType;
+use Whiterhino\Imaging\Exceptions\ImagingException;
+use Whiterhino\Imaging\Handlers\HandlerContract;
+use Whiterhino\Imaging\Types\ImageType;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Log;
@@ -206,33 +208,32 @@ final class ImageManager
         );
     }
 
-    /**
-     * Заполняет изображение водными знаками.
-     *
-     * @param string|null $filename Файл водного знака.
-     * @return string Ссылка на обработанный файл на диске заданный в настройке public_cache_disk.
-     *
-     * @throws ImagingException
-     */
-    public function fillWatermark(?string $filename): string
-    {
-        // TODO!
-        // Использовать rotate()
-    }
+//    /**
+//     * Заполняет изображение водными знаками.
+//     *
+//     * @param string|null $filename Файл водного знака.
+//     * @return string Ссылка на обработанный файл на диске заданный в настройке public_cache_disk.
+//     *
+//     * @throws ImagingException
+//     */
+//    public function fillWatermark(?string $filename): string
+//    {
+//        // Использовать rotate()
+//    }
 
-    /**
-     * Поворачивает изображение.
-     *
-     * @param int $degrees Угол поворота по часовой стрелке (положительное число) и против часовой
-     *                     стрелки (отрицательное число).
-     * @return string Ссылка на обработанный файл на диске заданный в настройке public_cache_disk.
-     *
-     * @throws ImagingException
-     */
-    public function rotate(int $degrees): string
-    {
-        // TODO!
-    }
+//    /**
+//     * Поворачивает изображение.
+//     *
+//     * @param int $degrees Угол поворота по часовой стрелке (положительное число) и против часовой
+//     *                     стрелки (отрицательное число).
+//     * @return string Ссылка на обработанный файл на диске заданный в настройке public_cache_disk.
+//     *
+//     * @throws ImagingException
+//     */
+//    public function rotate(int $degrees): string
+//    {
+//
+//    }
 
     /**
      * Создает имя файла для обработанного изображения.
@@ -384,7 +385,7 @@ final class ImageManager
         );
 
         $handler->setBgcolor(Config::get('store.imaging.bgcolor'));
-        $handler->setJpegBgcolor(Config::get('store.imaging.jpeg_bgcolor'));
+        $handler->setSecondBgcolor(Config::get('store.imaging.second_color'));
         $handler->setQuality(Config::get('store.imaging.quality'));
         $handler->setWatermarkAlpha(Config::get('store.imaging.watermark_alpha'));
 

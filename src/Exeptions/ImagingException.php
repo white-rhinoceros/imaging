@@ -1,6 +1,6 @@
 <?php
 
-namespace Whiterhino\Imaging;
+namespace Whiterhino\Imaging\Exceptions;
 
 use Exception;
 

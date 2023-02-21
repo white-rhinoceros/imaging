@@ -3,7 +3,7 @@
 namespace Whiterhino\Imaging\Handlers;
 
 use SplFileInfo;
-use Whiterhino\Imaging\ImagingException;
+use Whiterhino\Imaging\Exceptions\ImagingException;
 use Whiterhino\Imaging\Types\ImageType;
 use Whiterhino\Imaging\Types\XPositionType;
 use Whiterhino\Imaging\Types\YPositionType;
@@ -11,16 +11,14 @@ use Whiterhino\Imaging\Types\YPositionType;
 // Контракт драйвера обработчика изображения.
 interface HandlerContract
 {
-    /**
-     * @param SplFileInfo $file Обрабатываемый файл.
-     * @param ImageType|null $force_imagetype Рассматривать файл, как изображение данного типа.
-     * @param bool $debug Нужен ли режим отладки.
-     * @param array $config Дополнительный конфиг.
-     */
+	/**
+	 * @param SplFileInfo $file Обрабатываемый файл.
+	 * @param ImageType|null $force_imagetype Позволяет принудительно рассматривать файл, как изображение данного типа.
+	 * @param array $config Дополнительный конфиг, в случае если некоторому драйверу необходимы дополнительные настройки.
+	 */
     public function __construct(
         SplFileInfo $file,
         ?ImageType $force_imagetype = null,
-        bool $debug = false,
         array $config = []
     );
 
@@ -32,13 +30,6 @@ interface HandlerContract
     public function imagetype(): ImageType;
 
     /**
-     * Возвращает отладочные данные.
-     *
-     * @return array
-     */
-    public function debugData(): array;
-
-    /**
      * Устанавливает цвет фона.
      *
      * @param string|null $bgcolor
@@ -47,12 +38,13 @@ interface HandlerContract
     public function setBgcolor(?string $bgcolor): HandlerContract;
 
     /**
-     * Устанавливает цвет фона, если изображение не прозрачное, а цвет фона настройкой setBgcolor установлен в null.
+     * Устанавливает запасной цвет фона. Этот фон будет использован для изображений которые не могут иметь
+	 * прозрачный цвет фона и если методом self::setBgcolor() основной цвет фона установлен равным null.
      *
-     * @param string $jpeg_bgcolor
+     * @param string $second_color
      * @return HandlerContract
      */
-    public function setJpegBgcolor(string $jpeg_bgcolor): HandlerContract;
+    public function setSecondBgcolor(string $second_color): HandlerContract;
 
     /**
      * Устанавливает качество изображения (для поддерживаемых изображений).
