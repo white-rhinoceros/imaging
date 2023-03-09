@@ -596,7 +596,7 @@ abstract class AbstractHandler implements HandlerContract
     {
         if (empty($height) && empty($width)) {
             throw new ImagingException(__(
-                'wrong_dimensions',
+                'imaging.wrong_dimensions',
                 ['width' => $width, 'height' => $height]
             ));
         }
@@ -731,7 +731,7 @@ abstract class AbstractHandler implements HandlerContract
     {
         if (! $filename->isReadable()) {
             throw new ImagingException(__(
-                'file_is_unreadable',
+                'imaging.file_is_unreadable',
                 ['file' => $filename->getPathname()]
             ));
         }

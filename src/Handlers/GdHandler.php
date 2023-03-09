@@ -77,7 +77,8 @@ final class GdHandler extends AbstractHandler
         if ($imagetype == ImageType::JPEG) {
             $vars[] = $this->quality;
         } elseif ($imagetype == ImageType::PNG) {
-            $vars[] = floor(($this->quality / 100) * 9);
+            // TODO: Какая-то чертова чертовщина!
+            //$vars[] = (int) floor(($this->quality / 100) * 9);
         }
 
         ob_start();
@@ -159,7 +160,7 @@ final class GdHandler extends AbstractHandler
             return true;
         }
 
-        return __('imaging.gd_error', ['func' => 'imagecopy']);
+        return __('imaging.unknown_gd_error', ['func' => 'imagecopy']);
     }
 
     /**
@@ -191,7 +192,7 @@ final class GdHandler extends AbstractHandler
             return true;
         }
 
-        return __('imaging.gd_error', ['func' => self::GD_RESIZE_FUNC]);
+        return __('imaging.unknown_gd_error', ['func' => self::GD_RESIZE_FUNC]);
     }
 
     /**
@@ -228,7 +229,7 @@ final class GdHandler extends AbstractHandler
                     $new_wm_width,
                     $new_wm_height
                 )) {
-                    return __('imaging.gd_error', ['func' => 'imagecopy']);
+                    return __('imaging.unknown_gd_error', ['func' => 'imagecopy']);
                 }
 
                 // Установим переменные для объединения изображений.
@@ -265,7 +266,7 @@ final class GdHandler extends AbstractHandler
             $result = imagerotate($this->image, 360 - $degrees, $color, ignore_transparent: false);
 
             if ($result === false) {
-                return __('imaging.gd_error', ['func' => 'imagerotate']);
+                return __('imaging.unknown_gd_error', ['func' => 'imagerotate']);
             }
 
             $this->image = $result;
@@ -302,17 +303,29 @@ final class GdHandler extends AbstractHandler
 
         // Загрузим изображение из файла.
         [$width, $height] = $this->sizesOfImageFile($file->getPathname());
+
+        if ($imagetype === ImageType::WEBP) {
+            $info = $this->webpInfo($file->getPathname());
+
+            // Если не удалось определить информацию об webp файле, проверку не делаем.
+            if ($info !== null) {
+                if (isset($info['animation']) && $info['animation'] === true) {
+                    throw new ImagingException(__('imaging.gd_webp_animation_error'));
+                }
+            }
+        }
+
         $tmp_image = call_user_func($process_function, $file->getPathname());
 
         if ($tmp_image === false) {
-            throw new ImagingException(__('imaging.gd_error', ['func' => $process_function]));
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => $process_function]));
         }
 
         // Создадим новое прозрачное изображение и наложим на него загруженное.
         $image = $this->createTransparentImage($width, $height, $imagetype);
 
         if (! imagecopy($image, $tmp_image, 0, 0, 0, 0, $width, $height)) {
-            throw new ImagingException(__('imaging.gd_error', ['func' => 'imagecopy']));
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagecopy']));
         }
 
         return $image;
@@ -336,7 +349,7 @@ final class GdHandler extends AbstractHandler
     {
         $image = imagecreatetruecolor($width, $height);
         if ($image === false) {
-            throw new ImagingException(__('imaging.gd_error', ['func' => 'imagecreatetruecolor']));
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagecreatetruecolor']));
         }
 
         $bgcolor = $this->bgcolor;
@@ -349,7 +362,7 @@ final class GdHandler extends AbstractHandler
 
         $result = imagesavealpha($image, true);
         if ($result === false) {
-            throw new ImagingException(__('imaging.gd_error', ['func' => 'imagesavealpha']));
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagesavealpha']));
         }
 
         if ($imagetype == ImageType::GIF || $imagetype == ImageType::PNG) {
@@ -359,17 +372,17 @@ final class GdHandler extends AbstractHandler
         // Устанавливаем режим наложения в значение false, добавляем фоновый цвет, затем переключаем его обратно.
         $result = imagealphablending($image, false);
         if ($result === false) {
-            throw new ImagingException(__('imaging.gd_error', ['func' => 'imagealphablending']));
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagealphablending']));
         }
 
         $result = imagefilledrectangle($image, 0, 0, $width, $height, $bgcolor);
         if ($result === false) {
-            throw new ImagingException(__('imaging.gd_error', ['func' => 'imagefilledrectangle']));
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagefilledrectangle']));
         }
 
         $result = imagealphablending($image, true);
         if ($result === false) {
-            throw new ImagingException(__('imaging.gd_error', ['func' => 'imagealphablending']));
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagealphablending']));
         }
 
         return $image;
@@ -404,7 +417,7 @@ final class GdHandler extends AbstractHandler
         $result = imagecolorallocatealpha($image, $red, $green, $blue, $alpha);
 
         if ($result === false) {
-            throw new ImagingException(__('imaging.gd_error', ['func' => 'imagecolorallocatealpha']));
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagecolorallocatealpha']));
         }
 
         return $result;
@@ -496,6 +509,71 @@ final class GdHandler extends AbstractHandler
             $this->imageMerge($bg_image, $this->image, 0, 0, 100, $this->imagetype);
             $this->image = $bg_image;
         }
+    }
+
+    /**
+     * Get WebP file info.
+     *
+     * @link https://www.php.net/manual/en/function.pack.php unpack format reference.
+     * @link https://developers.google.com/speed/webp/docs/riff_container WebP document.
+     * @param string $file
+     * @return array|null Return associative array if success, return `null` for otherwise.
+     */
+    private function webpInfo(string $file): array|null
+    {
+        $file = realpath($file);
+
+        $fp = fopen($file, 'rb');
+        if (! $fp) {
+            return null;
+        }
+        $data = fread($fp, 90);
+        fclose($fp);
+        unset($fp);
+
+        $header_format = 'A4Riff/'  // Get n string.
+            . 'I1Filesize/'         // Get integer (file size but not actual size).
+            . 'A4Webp/'             // Get n string.
+            . 'A4Vp/'               // Get n string.
+            . 'A74Chunk';
+        $header = unpack($header_format, $data);
+
+        if (!isset($header['Riff']) || strtoupper($header['Riff']) !== 'RIFF') {
+            return null;
+        }
+
+        if (!isset($header['Webp']) || strtoupper($header['Webp']) !== 'WEBP') {
+            return null;
+        }
+
+        if (!isset($header['Vp']) || !str_contains(strtoupper($header['Vp']), 'VP8')) {
+            return null;
+        }
+
+        $answer = [];
+
+        if (
+            str_contains(strtoupper($header['Chunk']), 'ANIM') ||
+            str_contains(strtoupper($header['Chunk']), 'ANMF')
+        ) {
+            $answer['animation'] = true;
+        } else {
+            $answer['animation'] = false;
+        }
+
+        if (str_contains(strtoupper($header['Chunk']), 'ALPH')) {
+            $answer['alpha'] = true;
+        } else {
+            if (str_contains(strtoupper($header['Vp']), 'VP8L')) {
+                // if it is VP8L, I assume that this image will be transparency
+                // as described in https://developers.google.com/speed/webp/docs/riff_container#simple_file_format_lossless
+                $answer['alpha'] = true;
+            } else {
+                $answer['alpha'] = false;
+            }
+        }
+
+        return $answer;
     }
 
     // endregion

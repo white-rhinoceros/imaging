@@ -7,8 +7,9 @@ use Whiterhino\Imaging\Handlers\{
 };
 
 use Whiterhino\Imaging\Types\{
-	XPositionType,
-	YPositionType
+    XPositionType,
+    YPositionType,
+    ImageType
 };
 
 return [
@@ -22,22 +23,48 @@ return [
      |
      */
 
-    'default_handler' => GdHandler::class,
-    //'default_handler' => ImagickHandler::class,
-    //'default_handler' => ImagemagickHandler::class,
+    'def_handler' => GdHandler::class,
+    //'def_handler' => ImagickHandler::class,
+    //'def_handler' => ImagemagickHandler::class,
 
 
     /*
     | -------------------------------------------------------------------------
-    | Диск для хранения публичного кеша изображений.
+    | Диск по умолчанию на котором ищутся изображения для обработки.
     | -------------------------------------------------------------------------
     |
-    | Laravel диск на который будут записываться кеш обработанных изображений.
-    | Должен быть публичным и задан в config/filesystem.php
+    | Должен быть задан в config/filesystem.php
     |
     */
 
-    'public_cache_disk' => 'imagecache',
+    'def_origin_disk' => 'public',
+
+
+    /*
+    | -------------------------------------------------------------------------
+    | Диск для сохранения обработанных изображений.
+    | -------------------------------------------------------------------------
+    |
+    | Должен быть задан в config/filesystem.php
+    |
+    */
+
+    'def_target_disk' => 'imagecache',
+
+
+    /*
+    | -------------------------------------------------------------------------
+    | Тип изображений по умолчанию.
+    | -------------------------------------------------------------------------
+    |
+    | Позволяет задать тип изображений, т.е. формат в котором будут сохраняться
+    | обработанные файлы по умолчанию по умолчанию. В случае установки null -
+    | будет использован тип изначального файла.
+    |
+    */
+
+    'def_imagetype' => ImageType::WEBP,
+    //'def_imagetype' => null,
 
 
     /*
