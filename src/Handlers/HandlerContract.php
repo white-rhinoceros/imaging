@@ -14,7 +14,7 @@ interface HandlerContract
 	/**
 	 * @param SplFileInfo $file Обрабатываемый файл.
 	 * @param ImageType|null $force_imagetype Позволяет принудительно рассматривать файл, как изображение данного типа.
-	 * @param array $config Дополнительный конфиг, в случае если некоторому драйверу необходимы дополнительные настройки.
+	 * @param array $config Дополнительные настройки.
 	 */
     public function __construct(
         SplFileInfo $file,
@@ -30,40 +30,7 @@ interface HandlerContract
     public function imagetype(): ImageType;
 
     /**
-     * Устанавливает цвет фона.
-     *
-     * @param string|null $bgcolor
-     * @return HandlerContract
-     */
-    public function setBgcolor(?string $bgcolor): HandlerContract;
-
-    /**
-     * Устанавливает запасной цвет фона. Этот фон будет использован для изображений которые не могут иметь
-	 * прозрачный цвет фона и если методом self::setBgcolor() основной цвет фона установлен равным null.
-     *
-     * @param string $second_color
-     * @return HandlerContract
-     */
-    public function setSecondBgcolor(string $second_color): HandlerContract;
-
-    /**
-     * Устанавливает качество изображения (для поддерживаемых изображений).
-     *
-     * @param int $quality
-     * @return HandlerContract
-     */
-    public function setQuality(int $quality): HandlerContract;
-
-    /**
-     * Устанавливает прозрачность водного знака.
-     *
-     * @param int $watermark_alpha
-     * @return HandlerContract
-     */
-    public function setWatermarkAlpha(int $watermark_alpha): HandlerContract;
-
-    /**
-     * Повторно загружает изображение.
+     * Загружает изображение повторно.
      *
      * @return HandlerContract
      */

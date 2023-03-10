@@ -36,7 +36,7 @@ final class GdHandler extends AbstractHandler
             imagedestroy($this->image);
         }
 
-        $this->image = $this->load($this->file, $this->imagetype);
+        $this->image = $this->loadGdImage($this->file, $this->imagetype);
     }
 
     /**
@@ -53,11 +53,9 @@ final class GdHandler extends AbstractHandler
 
         if ($imagetype == ImageType::JPEG) {
             $vars[] = $this->quality;
-        } elseif ($imagetype == ImageType::PNG) {
-            $vars[] = floor(($this->quality / 100) * 9);
         }
 
-        if (! $this->callUserFuncArray($process_function, $vars)) {
+        if (!$this->callUserFuncArray($process_function, $vars)) {
             throw new ImagingException(__('imaging.unknown_gd_error', ['func' => $process_function]));
         }
     }
@@ -76,9 +74,6 @@ final class GdHandler extends AbstractHandler
 
         if ($imagetype == ImageType::JPEG) {
             $vars[] = $this->quality;
-        } elseif ($imagetype == ImageType::PNG) {
-            // TODO: Какая-то чертова чертовщина!
-            //$vars[] = (int) floor(($this->quality / 100) * 9);
         }
 
         ob_start();
@@ -116,7 +111,7 @@ final class GdHandler extends AbstractHandler
 
         $size = getimagesize($pathname);
 
-        if (! $size) {
+        if (!$size) {
             throw new ImagingException(__(
                 'imaging.file_not_image',
                 ['file' => $pathname]
@@ -209,7 +204,7 @@ final class GdHandler extends AbstractHandler
         try {
             [$x, $y, $wm_width, $wm_height] = $this->prepareWatermarkParams($filename, $x_pos, $y_pos, $x_pad, $y_pad);
 
-            $watermark = $this->load($filename, $this->imagetype);
+            $watermark = $this->loadGdImage($filename, $this->imagetype);
 
             // Корд ниже нужен для предотвращения сбоя в GD с отрицательными координатами по X.
             if ($x < 0 || $y < 0) {
@@ -220,7 +215,7 @@ final class GdHandler extends AbstractHandler
                 // Создадим прозрачное изображение размерами нового водного знака.
                 $tmp_watermark = $this->createTransparentImage($new_wm_width, $new_wm_height, $this->imagetype);
 
-                if(! imagecopy(
+                if(!imagecopy(
                     $tmp_watermark,
                     $watermark,
                     0, 0,
@@ -257,7 +252,7 @@ final class GdHandler extends AbstractHandler
         $bgcolor = $this->bgcolor;
 
         if (in_array($this->imagetype, self::NOT_TRANSPIRED_IMAGETYPES) && $bgcolor === null) {
-            $bgcolor = $this->second_color;
+            $bgcolor = $this->second_bgcolor;
         }
 
         try {
@@ -290,11 +285,11 @@ final class GdHandler extends AbstractHandler
      *
      * @throws ImagingException
      */
-    private function load(SplFileInfo $file, ImageType $imagetype): GdImage
+    private function loadGdImage(SplFileInfo $file, ImageType $imagetype): GdImage
     {
         $process_function = 'imagecreatefrom' . $this->imagetype->ext();
 
-        if (! function_exists($process_function)) {
+        if (!function_exists($process_function)) {
             throw new ImagingException(__(
                 'imaging.gd_ext_missing',
                 ['extension' => $process_function]
@@ -324,7 +319,7 @@ final class GdHandler extends AbstractHandler
         // Создадим новое прозрачное изображение и наложим на него загруженное.
         $image = $this->createTransparentImage($width, $height, $imagetype);
 
-        if (! imagecopy($image, $tmp_image, 0, 0, 0, 0, $width, $height)) {
+        if (!imagecopy($image, $tmp_image, 0, 0, 0, 0, $width, $height)) {
             throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagecopy']));
         }
 
@@ -355,7 +350,7 @@ final class GdHandler extends AbstractHandler
         $bgcolor = $this->bgcolor;
 
         if (in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES) && $bgcolor === null) {
-            $bgcolor = $this->second_color;
+            $bgcolor = $this->second_bgcolor;
         }
 
         $bgcolor = $this->createColorFromHex($image, $bgcolor, 0);
@@ -497,7 +492,7 @@ final class GdHandler extends AbstractHandler
         $bgcolor = $this->bgcolor;
 
         if (in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES) && $bgcolor === null) {
-            $bgcolor = $this->second_color;
+            $bgcolor = $this->second_bgcolor;
         }
 
         if ($bgcolor) {
@@ -524,7 +519,7 @@ final class GdHandler extends AbstractHandler
         $file = realpath($file);
 
         $fp = fopen($file, 'rb');
-        if (! $fp) {
+        if (!$fp) {
             return null;
         }
         $data = fread($fp, 90);

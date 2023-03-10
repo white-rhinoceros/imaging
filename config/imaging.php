@@ -123,7 +123,7 @@ return [
      |
      */
 
-    'second_color' => '#FFF',
+    'second_bgcolor' => '#FFF',
 
 
     /*

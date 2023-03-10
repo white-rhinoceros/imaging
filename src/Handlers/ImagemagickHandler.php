@@ -25,8 +25,8 @@ final class ImagemagickHandler extends AbstractHandler
     /** @var string Расположение исполняемого файла imagemagick.  */
     private string $imagemagick_dir = '/usr/bin/';
 
-    /** @var ?string Директория для хранения временных файлов. */
-    private ?string $temp_dir = null;
+    /** @var string Директория для хранения временных файлов. */
+    private string $temp_dir;
 
     /** @var string Временное изображение, с которым проводятся все манипуляции. */
     private string $temp_image;
@@ -54,14 +54,10 @@ final class ImagemagickHandler extends AbstractHandler
             $this->imagemagick_dir = rtrim($config['imagemagick_dir'], '\\/') . DIRECTORY_SEPARATOR;
         }
 
-        if (isset($config['temp_dir'])) {
-            $this->temp_dir = $config['temp_dir'];
-        }
-
-        $this->temp_dir = ($this->temp_dir ?? sys_get_temp_dir()) . DIRECTORY_SEPARATOR . self::TMP_SUBDIR;
+        $this->temp_dir = ($config['temp_dir'] ?? sys_get_temp_dir()) . DIRECTORY_SEPARATOR . self::TMP_SUBDIR;
 
         if (
-            ! is_dir($this->temp_dir)
+            !is_dir($this->temp_dir)
             && !mkdir($this->temp_dir)
             && !is_dir($this->temp_dir)
         ) {
@@ -71,7 +67,7 @@ final class ImagemagickHandler extends AbstractHandler
             ));
         }
 
-        if (! touch($this->temp_dir . 'touch')) {
+        if (!touch($this->temp_dir . 'touch')) {
             throw new ImagingException(__(
                 'imaging.folder_access_denied',
                 ['folder' => $this->temp_dir]
@@ -101,7 +97,7 @@ final class ImagemagickHandler extends AbstractHandler
         $this->clearSizesCache();
 
         // Попробуем создать файл со временным изображением.
-        if (! isset($this->temp_image)) {
+        if (!isset($this->temp_image)) {
             $this->temp_image = $this->generateTmpFilename(ImageType::PNG->ext());
         } elseif (is_file($this->temp_image)) {
             unlink($this->temp_image);
@@ -174,7 +170,7 @@ final class ImagemagickHandler extends AbstractHandler
             return ob_get_clean();
         }
 
-        if(! str_ends_with($this->temp_image, $imagetype->ext())) {
+        if(!str_ends_with($this->temp_image, $imagetype->ext())) {
             ob_start();
 
             $this->exec(
@@ -368,7 +364,7 @@ final class ImagemagickHandler extends AbstractHandler
             $bgcolor = $this->bgcolor;
 
             if (in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES) && $bgcolor === null) {
-                $bgcolor = $this->second_color;
+                $bgcolor = $this->second_bgcolor;
             }
 
             $image = "'" . $this->temp_image . "'";

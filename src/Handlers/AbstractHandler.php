@@ -40,7 +40,7 @@ abstract class AbstractHandler implements HandlerContract
     protected ?string $bgcolor = null;
 
     /** @var string Запасной цвет фона (см. описание метода self::SetSecondBgcolor). */
-    protected string $second_color = '#FFF';
+    protected string $second_bgcolor = '#FFF';
 
     /** @var int Качество сохраняемого изображения, для поддерживаемых форматов. */
     protected int $quality = 70;
@@ -69,6 +69,27 @@ abstract class AbstractHandler implements HandlerContract
             $this->imagetype = ImageType::getType($file->getExtension());
         }
 
+        if (array_key_exists('bgcolor', $config)) {
+            if ($config['bgcolor'] === null) {
+                $this->bgcolor = null;
+            } else {
+                $this->bgcolor = (string)$config['bgcolor'];
+            }
+        }
+
+        // Если задан - то только строка.
+        if (array_key_exists('second_bgcolor', $config)) {
+            $this->second_bgcolor = (string)$config['second_bgcolor'];
+        }
+
+        if (array_key_exists('quality', $config)) {
+            $this->quality = (int)$config['quality'];
+        }
+
+        if (array_key_exists('watermark_alpha', $config)) {
+            $this->watermark_alpha = (int)$config['watermark_alpha'];
+        }
+
         // Метод реализуется в каждом конкретном драйвере.
         // Как именно загружается изображение нас здесь не интересует.
         $this->loadFromFile();
@@ -85,49 +106,9 @@ abstract class AbstractHandler implements HandlerContract
     /**
      * @inheritDoc
      */
-    public function setBgcolor(?string $bgcolor): HandlerContract
-    {
-        $this->bgcolor = $bgcolor;
-
-        return $this;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function setSecondBgcolor(string $second_color): HandlerContract
-    {
-        $this->second_color = $second_color;
-
-        return $this;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function setQuality(int $quality): HandlerContract
-    {
-        $this->quality = $quality;
-
-        return $this;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function setWatermarkAlpha(int $watermark_alpha): HandlerContract
-    {
-        $this->watermark_alpha = $watermark_alpha;
-
-        return $this;
-    }
-
-    /**
-     * @inheritDoc
-     */
     public function reload(): static
     {
-        $this->loadFromFile();
+        $this->loadFromFile($this->file, $this->imagetype);
 
         return $this;
     }
@@ -159,7 +140,7 @@ abstract class AbstractHandler implements HandlerContract
         $pathname = $file->getPath() . $file->getBasename('.' . $file->getExtension()) . '.' . $new_extension;
 
         // Пробуем создать файл.
-        if (! touch($pathname)) {
+        if (!touch($pathname)) {
             throw new ImagingException(__(
                 'imaging.creating_file_failed',
                 ['file' => $pathname]
@@ -470,7 +451,7 @@ abstract class AbstractHandler implements HandlerContract
     }
 
     /**
-     * Загружает изображение (переданное в конструкторе) из файла.
+     * Загружает изображение из файла.
      *
      * @return void
      */
@@ -729,7 +710,7 @@ abstract class AbstractHandler implements HandlerContract
         ?int $y_pad
     ): array
     {
-        if (! $filename->isReadable()) {
+        if (!$filename->isReadable()) {
             throw new ImagingException(__(
                 'imaging.file_is_unreadable',
                 ['file' => $filename->getPathname()]

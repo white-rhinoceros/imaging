@@ -35,13 +35,13 @@ final class ImagickHandler extends AbstractHandler
         array $config = []
     )
     {
-        if (! extension_loaded('imagick')) {
+        if (!extension_loaded('imagick')) {
             throw new ImagingException(__(
                 'imaging.imagick_ext_missing'
             ));
         }
 
-        if (! isset($this->imagick)) {
+        if (!isset($this->imagick)) {
             $this->imagick = new Imagick();
         }
 
@@ -346,7 +346,7 @@ final class ImagickHandler extends AbstractHandler
         $bgcolor = $this->bgcolor;
 
         if (in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES) && $bgcolor === null) {
-            $bgcolor = $this->second_color;
+            $bgcolor = $this->second_bgcolor;
         }
 
         return $bgcolor;

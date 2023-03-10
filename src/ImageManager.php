@@ -67,7 +67,7 @@ final class ImageManager
         $this->tmp_dir = rtrim(Config::get('imaging.temp_dir'), '\\/') . '/' . self::TMP_SUBDIR . '/';
 
         if (
-            ! is_dir($this->tmp_dir)
+            !is_dir($this->tmp_dir)
             && !mkdir($this->tmp_dir)
             && !is_dir($this->tmp_dir)
         ) {
@@ -236,19 +236,15 @@ final class ImageManager
         }
 
         /** @var HandlerContract $handler */
-        $handler = new $this->handler_name(
-            $file,
-            null,
-            [
-                'imagemagick_dir' => Config::get('imaging.imagemagick_dir'),
-                'temp_dir' => Config::get('imaging.temp_dir'),
-            ]
-        );
-
-        $handler->setBgcolor(Config::get('imaging.bgcolor'));
-        $handler->setSecondBgcolor(Config::get('imaging.second_color'));
-        $handler->setQuality(Config::get('imaging.quality'));
-        $handler->setWatermarkAlpha(Config::get('imaging.watermark_alpha'));
+        $handler = new $this->handler_name($file, null, [
+            'bgcolor' => Config::get('imaging.bgcolor'),
+            'second_bgcolor' => Config::get('imaging.second_bgcolor'),
+            'quality' => Config::get('imaging.quality'),
+            'watermark_alpha' => Config::get('imaging.watermark_alpha'),
+            // Только для ImagemagickHandler драйвера.
+            'imagemagick_dir' => Config::get('imaging.imagemagick_dir'),
+            'temp_dir' => Config::get('imaging.temp_dir'),
+        ]);
 
         return $handler;
     }
