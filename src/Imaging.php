@@ -13,6 +13,11 @@ class Imaging
     public const RESIZE_MODE_STRETCH = 'stretch'; // Растянуть.
     public const RESIZE_MODE_KEEPRATIO = 'keepratio'; // Сохранить пропорции, уменьшив по меньшей пропорции.
 
+    // Константы определяющие способы обрезки изображений.
+    public const CROP_MODE_IGNORE = 'ignore';
+
+    public const CROP_MODE_ADDPADDING = 'addpadding';
+
     /**
      * Обрезать изображение используя координаты или проценты.
      * Положительные целые числа или проценты суть координаты отсчитываемые от верхнего, левого угла.
@@ -38,7 +43,8 @@ class Imaging
         int|string $x1,
         int|string|null $y1,
         int|string|null $x2,
-        int|string|null $y2
+        int|string|null $y2,
+        string $mode = self::CROP_MODE_IGNORE
     ): string
     {
         [$disk, $filepath] = self::getDiskAndFilename($filename);
@@ -46,7 +52,7 @@ class Imaging
         $cached = self::getFilenameForCache(
             $disk,
             $filepath,
-            '-crop-' . $x1 . 'x' . $y1 . 'x' . $x2 . 'x' . $y2
+            '-crop-' . $mode . '-' . $x1 . 'x' . $y1 . 'x' . $x2 . 'x' . $y2
         );
 
         $manager = new ImageManager(
@@ -59,7 +65,7 @@ class Imaging
         $processed_file = $manager->make(
             $filepath,
             $cached,
-            fn(HandlerContract $image) => $image->crop($x1, $y1, $x2, $y2)
+            fn(HandlerContract $image) => $image->crop($x1, $y1, $x2, $y2, !($mode === self::CROP_MODE_IGNORE))
         );
 
         return $manager->generateUrl($processed_file);
@@ -80,7 +86,7 @@ class Imaging
     {
         [$disk, $filepath] = self::getDiskAndFilename($filename);
 
-        $cached = $this->getFilenameForCache(
+        $cached = self::getFilenameForCache(
             $disk,
             $filename,
             '-resize-' . $mode . '-' . $width . 'x' . $height

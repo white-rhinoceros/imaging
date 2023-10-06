@@ -205,7 +205,7 @@ final class ImagickHandler extends AbstractHandler
             if ($pad) {
                 $tmp_image = new Imagick();
 
-                $bgcolor = $this->getConfBgColor($this->imagetype);
+                $bgcolor = $this->getConfBgColor($this->origin_imagetype);
 
                 $tmp_image->newImage(
                     $new_image_width,
@@ -271,7 +271,7 @@ final class ImagickHandler extends AbstractHandler
     {
         try {
             $degrees = $this->prepareRotateDegrees($degrees);
-            $bgcolor = $this->getConfBgColor($this->imagetype);
+            $bgcolor = $this->getConfBgColor($this->origin_imagetype);
 
             $this->imagick->rotateImage(
                 $this->createColorFromHex($bgcolor,  $bgcolor === null ? 0 : 100),

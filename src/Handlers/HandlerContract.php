@@ -23,13 +23,6 @@ interface HandlerContract
     );
 
     /**
-     * Возвращает тип изображения обрабатываемого файла.
-     *
-     * @return ImageType
-     */
-    public function imagetype(): ImageType;
-
-    /**
      * Загружает изображение повторно.
      *
      * @return HandlerContract
@@ -108,9 +101,17 @@ interface HandlerContract
      * @param int|string|null $y1 Y - координата первого набора.
      * @param int|string|null $x2 X - координата второго набора.
      * @param int|string|null $y2 Y - координата второго набора.
+     * @param bool $add_padding Следует ли добавить поля, если изображение увеличивается (в противном случае
+     *                          увеличение холста изображения не будет).
      * @return  HandlerContract
      */
-    public function crop(int|string $x1, int|string|null $y1, int|string|null $x2, int|string|null $y2): static;
+    public function crop(
+        int|string $x1,
+        int|string|null $y1,
+        int|string|null $x2,
+        int|string|null $y2,
+        bool $add_padding = false
+    ): static;
 
     /**
      * Изменяет размер изображения. Если $width или $height имеет значение null в этом случае отношение

@@ -27,7 +27,7 @@ abstract class AbstractHandler implements HandlerContract
     protected SplFileInfo $file;
 
     /** @var ImageType Тип обрабатываемого изображения */
-    protected ImageType $imagetype;
+    protected ImageType $origin_imagetype;
 
     // Обработка.
 
@@ -64,9 +64,9 @@ abstract class AbstractHandler implements HandlerContract
         $this->file = $file;
 
         if ($force_imagetype !== null) {
-            $this->imagetype = $force_imagetype;
+            $this->origin_imagetype = $force_imagetype;
         } else {
-            $this->imagetype = ImageType::getType($file->getExtension());
+            $this->origin_imagetype = ImageType::getType($file->getExtension());
         }
 
         if (array_key_exists('bgcolor', $config)) {
@@ -98,17 +98,9 @@ abstract class AbstractHandler implements HandlerContract
     /**
      * @inheritDoc
      */
-    public function imagetype(): ImageType
-    {
-        return $this->imagetype;
-    }
-
-    /**
-     * @inheritDoc
-     */
     public function reload(): static
     {
-        $this->loadFromFile($this->file, $this->imagetype);
+        $this->loadFromFile();
 
         return $this;
     }
@@ -187,7 +179,7 @@ abstract class AbstractHandler implements HandlerContract
     public function output(?ImageType $imagetype = null): static
     {
         if ($imagetype === null) {
-            $imagetype = $this->imagetype;
+            $imagetype = $this->origin_imagetype;
         }
 
         $blob =  $this->getBlob($imagetype);
@@ -204,7 +196,7 @@ abstract class AbstractHandler implements HandlerContract
     public function blob(?ImageType $imagetype = null): string
     {
         if ($imagetype === null) {
-            $imagetype = $this->imagetype;
+            $imagetype = $this->origin_imagetype;
         }
 
 		return $this->getBlob($imagetype);
@@ -253,9 +245,15 @@ abstract class AbstractHandler implements HandlerContract
     /**
      * @inheritDoc
      */
-    public function crop(int|string $x1, int|string|null $y1, int|string|null $x2, int|string|null $y2): static
+    public function crop(
+        int|string $x1,
+        int|string|null $y1,
+        int|string|null $x2,
+        int|string|null $y2,
+        bool $add_padding = false
+    ): static
     {
-        $this->queue('crop', $x1, $y1, $x2, $y2);
+        $this->queue('crop', $x1, $y1, $x2, $y2, $add_padding);
 
         return $this;
     }
@@ -340,14 +338,14 @@ abstract class AbstractHandler implements HandlerContract
                 $args = array_values($args);
             }
 
-            list($instance, $method) = $callback;
+            [$instance, $method] = $callback;
 
             return $instance->{$method}(...$args);
         }
 
         // Статический вызов?
         if (is_array($callback) && isset($callback[1]) && is_string($callback[0])) {
-            list($class, $method) = $callback;
+            [$class, $method] = $callback;
             $class = '\\'.ltrim($class, '\\');
 
             return $class::{$method}(...$args);
@@ -502,13 +500,16 @@ abstract class AbstractHandler implements HandlerContract
      * @param int|string|null $y1 Y - координата первого набора.
      * @param int|string|null $x2 X - координата второго набора.
      * @param int|string|null $y2 Y - координата второго набора.
+     * @param bool $add_padding Следует ли добавить поля, если изображение увеличивается (в противном случае
+     *                          увеличение холста изображения не будет).
      * @return bool|string True в случае успех, строка с описанием ошибки в противном случае.
      */
     abstract protected function _crop(
         int|string $x1,
         int|string|null $y1,
         int|string|null $x2,
-        int|string|null $y2
+        int|string|null $y2,
+        bool $add_padding = false
     ): bool|string;
 
     /**
@@ -586,17 +587,17 @@ abstract class AbstractHandler implements HandlerContract
 
         if (empty($height) && $width) {
             if (str_ends_with($width, '%')) {
-                $height = $width;
+                $height = (int)$width;
             } else {
-                $height = ((int)$width * ($src_height / $src_width));
+                $height = (int)((int)$width * ($src_height / $src_width));
             }
         }
 
         if (empty($width) && $height) {
             if (str_ends_with($height, '%')) {
-                $width = $height;
+                $width = (int)$height;
             } else {
-                $width = ((int)$height * ($src_width / $src_height));
+                $width = (int)((int)$height * ($src_width / $src_height));
             }
         }
 

@@ -37,18 +37,25 @@ final class ImageManager
     /** @var ImageType|null Определяет тип для сохранения обработанного изображения. Null - тип оригинального файла. */
     private ?ImageType $imagetype;
 
+	/** @var array Конфиг который будет использован для создания драйвера. */
+	private array $config;
+
     /**
      * @param string $origin_disk_name Диск с изображениями.
      * @param string $handler_name Имя обработчика (драйвера).
      * @param ImageType|null $imagetype Тип изображения, в котором будут сохраняться обработанные файлы.
-     *                                  Null - использовать оригинальный формат.
+     *                                  NULL - использовать оригинальный формат.
+	 * @param array $config Опциональный конфиг для драйвера. Параметры переданные через конструктор
+	 * 						имеют первостепенное значение.
+	 *
      * @throws ImagingException
      */
     public function __construct(
         string $origin_disk_name,
         string $target_disk_name,
         string $handler_name,
-        ?ImageType $imagetype
+        ?ImageType $imagetype,
+		array $config = []
     )
     {
         $this->handler_name = $handler_name;
@@ -65,6 +72,16 @@ final class ImageManager
         $this->origin_disk = Storage::disk($origin_disk_name);
         $this->target_disk = Storage::disk($target_disk_name);
         $this->tmp_dir = rtrim(Config::get('imaging.temp_dir'), '\\/') . '/' . self::TMP_SUBDIR . '/';
+
+		$this->config = $config + [
+			'bgcolor' => Config::get('imaging.bgcolor'),
+			'second_bgcolor' => Config::get('imaging.second_bgcolor'),
+			'quality' => Config::get('imaging.quality'),
+			'watermark_alpha' => Config::get('imaging.watermark_alpha'),
+			// Только для ImagemagickHandler драйвера.
+			'imagemagick_dir' => Config::get('imaging.imagemagick_dir'),
+			'temp_dir' => Config::get('imaging.temp_dir'),
+		];
 
         if (
             !is_dir($this->tmp_dir)
@@ -84,11 +101,12 @@ final class ImageManager
      * @param string $filename Имя исходного файла.
      * @param string $cached Имя обработанного изображения (может включать директории, без расширения).
      * @param callable $callback Функция обратного вызова обработки изображения.
+     * @param bool $force Перезаписать кеш изображения (если имеется).
      * @return string|null Имя файла с обработанным изображением.
      *
      * @throws ImagingException
      */
-    public function make(string $filename, string $cached, callable $callback): ?string
+    public function make(string $filename, string $cached, callable $callback, bool $force = false): ?string
     {
         if ($this->origin_disk->missing($filename)) {
             if (Config::get('imaging.debug')) {
@@ -112,11 +130,31 @@ final class ImageManager
             $cached .= $this->imagetype->ext(true); 
         } else {
             $extension = pathinfo($filename, PATHINFO_EXTENSION);
-            $cached .= ImageType::getType($extension)->ext(true);
+			$imagetype = ImageType::getType($extension);
+
+			if ($imagetype === null) {
+				if (Config::get('imaging.debug')) {
+					throw new ImagingException(__(
+						'imaging.unknown_imagetype',
+						['type' => $extension]
+					));
+				}
+
+				Log::channel('imaging')->error(
+					__(
+						'imaging.unknown_imagetype',
+						['type' => $extension]
+					)
+				);
+
+				return '';
+			}
+
+            $cached .= $imagetype->ext(true);
         }
             
         // Если нужное изображение уже существует, то просто отдадим его.
-        if ($this->checkCachedImg($filename, $cached) === true) {
+        if (!$force && $this->checkCachedImg($filename, $cached) === true) {
             return $cached;
         }
 
@@ -160,15 +198,9 @@ final class ImageManager
     {
         $source_time = $this->origin_disk->lastModified($filename);
 
-        if (
-            $this->target_disk->exists($cached_img_filename)
-            && $this->target_disk->lastModified($cached_img_filename) > $source_time
-        ) {
-            return true;
-        }
-
-        return false;
-    }
+		return $this->target_disk->exists($cached_img_filename)
+			&& $this->target_disk->lastModified($cached_img_filename) > $source_time;
+	}
 
     /**
      * Создает кешированное (обработанное изображение).
@@ -235,17 +267,6 @@ final class ImageManager
             ));
         }
 
-        /** @var HandlerContract $handler */
-        $handler = new $this->handler_name($file, null, [
-            'bgcolor' => Config::get('imaging.bgcolor'),
-            'second_bgcolor' => Config::get('imaging.second_bgcolor'),
-            'quality' => Config::get('imaging.quality'),
-            'watermark_alpha' => Config::get('imaging.watermark_alpha'),
-            // Только для ImagemagickHandler драйвера.
-            'imagemagick_dir' => Config::get('imaging.imagemagick_dir'),
-            'temp_dir' => Config::get('imaging.temp_dir'),
-        ]);
-
-        return $handler;
+        return new $this->handler_name($file, null, $this->config);
     }
 }
