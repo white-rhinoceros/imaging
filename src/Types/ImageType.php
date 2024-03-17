@@ -14,7 +14,6 @@ enum ImageType: int
     case WEBP = 18; // IMAGETYPE_WEBP
 
     private const IMAGETYPE_TO_POSSIBLE_EXTENSION = [
-        // PHP 8.2
         self::GIF->value => ['gif'],
         self::JPEG->value => ['jpeg', 'jpg', 'jpe'],
         self::PNG->value => ['png'],

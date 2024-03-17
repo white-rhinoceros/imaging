@@ -1,7 +1,6 @@
 <?php
 
 declare(strict_types=1);
-
 namespace Whiterhino\Imaging\Handlers;
 
 use Illuminate\Support\Str;
@@ -124,7 +123,7 @@ final class ImagemagickHandler extends AbstractHandler
         $new = "'" . $pathname . "'";
 
         if(
-            in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES)
+            in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES, true)
             && $this->quality > 0
             && $this->quality < 100
         ) {
@@ -190,21 +189,16 @@ final class ImagemagickHandler extends AbstractHandler
      *
      * @throws ImagingException
      */
-    public function sizesOfImageFile(?string $pathname): array
+    public function sizes(): array
     {
-        if ($pathname === null) {
-            $pathname = $this->temp_image;
-            $fileHash = $this->temp_image_hash;
-        } else {
-            $fileHash = md5($pathname);
-        }
+        $fileHash = $this->temp_image_hash;
 
         if ($this->sizes_cache[$fileHash]) {
             $size = $this->sizes_cache[$fileHash];
         } else {
             $output = $this->exec(
                 'identify',
-                "-format '%w %h' '" . $pathname . "'[0]"
+                "-format '%w %h' '" .  $this->temp_image . "'[0]"
             );
 
             [$width, $height] = explode(" ", $output[0]);
@@ -227,7 +221,8 @@ final class ImagemagickHandler extends AbstractHandler
         int|string $x1,
         int|string|null $y1,
         int|string|null $x2,
-        int|string|null $y2
+        int|string|null $y2,
+        bool $add_padding = false
     ): bool|string
     {
         [$x1, $y1, $x2, $y2] = $this->prepareCropCoords($x1, $y1, $x2, $y2);
@@ -456,7 +451,7 @@ final class ImagemagickHandler extends AbstractHandler
      */
     private function createColorFromHex(string $hex, ?int $alpha = null): string
     {
-        [$red, $green, $blue, $def_alpha] = $this->createDecColorFromHex($hex);
+        [$red, $green, $blue, $def_alpha] = self::createDecColorFromHex($hex);
 
         $alpha === null and $alpha = $def_alpha;
 

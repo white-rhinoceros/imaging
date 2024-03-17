@@ -1,7 +1,6 @@
 <?php
 
 declare(strict_types=1);
-
 namespace Whiterhino\Imaging\Handlers;
 
 use GdImage;
@@ -43,7 +42,7 @@ final class GdHandler extends AbstractHandler
         }
 
         [$this->image, $this->width, $this->height]
-            = $this->loadGdImage($this->file, $this->origin_imagetype);
+            = self::loadGdImage($this->file, $this->origin_imagetype);
     }
 
     /**
@@ -53,16 +52,16 @@ final class GdHandler extends AbstractHandler
      */
     protected function saveToFile(string $pathname, ImageType $imagetype): void
     {
-        $this->addBackground($imagetype);
+        $this->addBackground();
 
-        $process_function = 'image' . $this->origin_imagetype->ext();
+        $process_function = 'image' . $imagetype->ext();
         $vars = [$this->image, $pathname];
 
         if ($imagetype === ImageType::JPEG) {
             $vars[] = $this->quality;
         }
 
-        if (!$this->callUserFuncArray($process_function, $vars)) {
+        if (!self::callUserFuncArray($process_function, $vars)) {
             throw new ImagingException(__('imaging.unknown_gd_error', ['func' => $process_function]));
         }
     }
@@ -74,9 +73,9 @@ final class GdHandler extends AbstractHandler
      */
     protected function getBlob(ImageType $imagetype): string
     {
-        $this->addBackground($imagetype);
+        $this->addBackground();
 
-        $process_function = 'image' . $this->origin_imagetype->ext();
+        $process_function = 'image' . $imagetype->ext();
         $vars = [$this->image, null];
 
         if ($imagetype === ImageType::JPEG) {
@@ -84,7 +83,7 @@ final class GdHandler extends AbstractHandler
         }
 
         ob_start();
-        $result = $this->callUserFuncArray($process_function, $vars);
+        $result = self::callUserFuncArray($process_function, $vars);
         $blob_str = ob_get_clean();
 
         if (!$result) {
@@ -99,33 +98,20 @@ final class GdHandler extends AbstractHandler
      *
      * @throws ImagingException
      */
-    protected function sizesOfImageFile(?string $pathname): array
+    public function sizes(): array
     {
-        if ($pathname === null) {
-            $width  = imagesx($this->image);
-            $height = imagesy($this->image);
+        $width  = imagesx($this->image);
+        $height = imagesy($this->image);
 
-            if ($width === false) {
-                throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagesx']));
-            }
-
-            if ($height === false) {
-                throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagesy']));
-            }
-
-            return [$width, $height];
+        if ($width === false) {
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagesx']));
         }
 
-        $size = getimagesize($pathname);
-
-        if (!$size) {
-            throw new ImagingException(__(
-                'imaging.file_not_image',
-                ['file' => $pathname]
-            ));
+        if ($height === false) {
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagesy']));
         }
 
-        return [$size[0], $size[1]];
+        return [$width, $height];
     }
 
     // endregion
@@ -170,7 +156,7 @@ final class GdHandler extends AbstractHandler
         }
 
         try {
-            $image = $this->createTransparentImage($width, $height, $this->origin_imagetype);
+            $image = $this->createTransparentImage($width, $height);
         } catch (ImagingException $e) {
             return $e->getMessage();
         }
@@ -198,7 +184,7 @@ final class GdHandler extends AbstractHandler
             [$width, $height, $new_image_width, $new_image_height, $dist_x, $dist_y, $src_width, $src_height]
                 = $this->prepareResizeCoords($width, $height, $keep_ratio, $pad);
 
-            $image = $this->createTransparentImage($new_image_width, $new_image_height, $this->origin_imagetype);
+            $image = $this->createTransparentImage($new_image_width, $new_image_height);
         } catch (ImagingException $e) {
             return $e->getMessage();
         }
@@ -230,8 +216,7 @@ final class GdHandler extends AbstractHandler
         try {
             [$x, $y, $wm_width, $wm_height] = $this->prepareWatermarkParams($filename, $x_pos, $y_pos, $x_pad, $y_pad);
 
-            [$watermark, $watermark_width, $watermark_height]
-                = $this->loadGdImage($filename, $this->origin_imagetype);
+            [$watermark,,] = self::loadGdImage($filename);
 
             // Корд ниже нужен для предотвращения сбоя в GD с отрицательными координатами по X.
             if ($x < 0 || $y < 0) {
@@ -240,7 +225,7 @@ final class GdHandler extends AbstractHandler
                 $new_wm_height = ($y < 0) ? ($wm_height + $y) : $wm_height;
 
                 // Создадим прозрачное изображение размерами нового водного знака.
-                $tmp_watermark = $this->createTransparentImage($new_wm_width, $new_wm_height, $this->origin_imagetype);
+                $tmp_watermark = $this->createTransparentImage($new_wm_width, $new_wm_height);
 
                 if(!imagecopy(
                     $tmp_watermark,
@@ -261,7 +246,7 @@ final class GdHandler extends AbstractHandler
             }
 
             // Используется в качестве обходного пути из-за отсутствия альфа-поддержки в imagecopymerge.
-            $this->imageMerge($this->image, $watermark, $x, $y, $this->watermark_alpha, $this->origin_imagetype);
+            $this->imageMerge($this->image, $watermark, $x, $y, $this->watermark_alpha);
 
             return true;
         } catch (ImagingException $e) {
@@ -286,9 +271,9 @@ final class GdHandler extends AbstractHandler
         }
 
         try {
-            $color = $this->createColorFromHex($this->image, $bgcolor, 100);
+            $color = self::createColorFromHex($this->image, $bgcolor, 100);
 
-            $result = imagerotate($this->image, 360 - $degrees, $color, ignore_transparent: false);
+            $result = imagerotate($this->image, 360 - $degrees, $color);
 
             if ($result === false) {
                 return __('imaging.unknown_gd_error', ['func' => 'imagerotate']);
@@ -304,24 +289,84 @@ final class GdHandler extends AbstractHandler
 
     // endregion
 
-    // region Вспомогательные методы
+    // region Вспомогательные статические методы
+
+    /**
+     * Загружает изображение из файла.
+     *
+     * @param SplFileInfo $file
+     * @param ImageType|null $imagetype
+     * @return array
+     *
+     * @throws ImagingException
+     */
+    private static function loadGdImage(SplFileInfo $file, ImageType $imagetype = null): array
+    {
+        // Если тип изображения не передан, пробуем определить тип изображения по расширению.
+        if ($imagetype === null) {
+            $imagetype = ImageType::getType($file->getExtension());
+
+            if ($imagetype === null) {
+                throw new ImagingException(__(
+                    'imaging.unknown_imagetype',
+                    ['type' => $file->getExtension()]
+                ));
+            }
+        }
+
+        $process_function = 'imagecreatefrom' . $imagetype->ext();
+
+        if (!function_exists($process_function)) {
+            throw new ImagingException(__(
+                'imaging.gd_ext_missing',
+                ['extension' => $process_function]
+            ));
+        }
+
+        // Загрузим изображение из файла.
+        [$width, $height] = self::sizesOfImageFile($file->getPathname());
+
+        if ($imagetype === ImageType::WEBP) {
+            $info = self::webpInfo($file->getPathname());
+
+            // Если не удалось определить информацию об webp файле, проверку не делаем.
+            if (($info !== null) && isset($info['animation']) && $info['animation'] === true) {
+                throw new ImagingException(__('imaging.gd_webp_animation_error'));
+            }
+        }
+
+        $tmp_image = $process_function($file->getPathname());
+
+        if ($tmp_image === false) {
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => $process_function]));
+        }
+
+        return [$tmp_image, $width, $height];
+
+//        // Создадим новое прозрачное изображение и наложим на него загруженное.
+//        $image = $this->createTransparentImage($width, $height, $imagetype);
+//
+//        if (!imagecopy($image, $tmp_image, 0, 0, 0, 0, $width, $height)) {
+//            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagecopy']));
+//        }
+//
+//        return [$image, $width, $height];
+    }
 
 	/**
 	 * Создать новый цвет с помощью GD.
 	 *
 	 * @param GdImage $image Изображение на основе которого создается цвет.
-	 * @param string|null $hex Hex код цвета (null создаст черный цвет прозрачности alpha, если-же alpha тоже null,
-	 *                         то будет создано полностью прозрачный черный цвет).
-	 * @param int|null $alpha Прозрачность цвета (если задано, то не использовать прозрачность переданную с hex);
-	 *                        от 0 (полностью прозрачное изображение) до 100 (не прозрачное).
+	 * @param string|null $hex Hex код цвета (null создаст черный цвет прозрачности alpha, если-же alpha тоже null, то будет создано полностью прозрачный черный цвет).
+	 * @param int|null $alpha Прозрачность цвета (если задано, то не использовать прозрачность переданную с hex); от 0 (полностью прозрачное изображение) до 100 (не прозрачное).
 	 * @return int RGBA представление hex цвета и alpha канала.
 	 *
 	 * @throws ImagingException
 	 */
-	private function createColorFromHex(GdImage $image, ?string $hex, ?int $alpha = null): int
+	private static function createColorFromHex(GdImage $image, ?string $hex, ?int $alpha = null): int
 	{
 		// Если цвет не передан, то будет взят полностью прозрачный черный цвет.
-		[$red, $green, $blue, $def_alpha] = $this->createDecColorFromHex($hex);
+		[$red, $green, $blue, $def_alpha] = self::createDecColorFromHex($hex);
 
 		if ($hex === null && $alpha === null) {
 			$alpha = 127;
@@ -329,7 +374,7 @@ final class GdHandler extends AbstractHandler
 			$alpha === null and $alpha = $def_alpha;
 
 			// Конвертируем alpha в понятный imagecolorallocatealpha функции формат.
-			$alpha = 127 - (int) floor($alpha * 1.27);
+			$alpha = 127 - (int)floor($alpha * 1.27);
 		}
 
 		$result = imagecolorallocatealpha($image, $red, $green, $blue, $alpha);
@@ -341,210 +386,6 @@ final class GdHandler extends AbstractHandler
 		return $result;
 	}
 
-	/**
-	 * Объединяет изображения вместе.
-	 *
-	 * @param GdImage $bottom_image Изображение на которое накладывают изображение (нижнее).
-	 * @param GdImage $top_image Накладываемое изображение (верхнее).
-	 * @param int $x Положение верхнего изображения на X-оси.
-	 * @param int $y Положение верхнего изображения на Y-оси.
-	 * @param int $alpha Прозрачность верхнего изображения от 0 (прозрачное) до 100 (не прозрачное).
-	 * @param ImageType $imagetype Тип результирующего изображения.
-	 *
-	 * @throws ImagingException
-	 */
-	private function imageMerge(
-		GdImage $bottom_image,
-		GdImage $top_image,
-		int $x,
-		int $y,
-		int $alpha,
-		ImageType $imagetype
-	): void
-	{
-		$top_image_width = imagesx($top_image);
-		$top_image_height = imagesy($top_image);
-		if ($top_image_width === false) {
-			throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagesx']));
-		}
-		if ($top_image_height === false) {
-			throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagesy']));
-		}
-
-		$tmp_image = $this->createTransparentImage($top_image_width, $top_image_height, $imagetype);
-
-		$result_1 = imagecopy($tmp_image, $bottom_image, 0, 0, $x, $y, $top_image_width, $top_image_height);
-		$result_2 = imagecopy($tmp_image, $top_image, 0, 0, 0, 0, $top_image_width, $top_image_height);
-		if ($result_1 === false || $result_2 === false) {
-			throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagecopy']));
-		}
-
-		if (imagecolortransparent($top_image) === -1) {
-			$result = imagealphablending($bottom_image, false);
-			if ($result === false) {
-				throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagealphablending']));
-			}
-
-			$result = imagecopymerge($bottom_image, $tmp_image, $x, $y, 0, 0, $top_image_width, $top_image_height, $alpha);
-			if ($result === false) {
-				throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagecopymerge']));
-			}
-
-			$result = imagealphablending($bottom_image, true);
-			if ($result === false) {
-				throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagealphablending']));
-			}
-		} else {
-			$result = imagecopy($bottom_image, $tmp_image, $x, $y, 0, 0, $top_image_width, $top_image_height);
-			if ($result === false) {
-				throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagecopy']));
-			}
-		}
-	}
-
-    /**
-     * Загружает изображение из файла.
-     *
-     * @param SplFileInfo $file
-     * @param ImageType $imagetype
-     * @return array
-     *
-     * @throws ImagingException
-     */
-    private function loadGdImage(SplFileInfo $file, ImageType $imagetype): array
-    {
-        $process_function = 'imagecreatefrom' . $this->origin_imagetype->ext();
-
-        if (!function_exists($process_function)) {
-            throw new ImagingException(__(
-                'imaging.gd_ext_missing',
-                ['extension' => $process_function]
-            ));
-        }
-
-        // Загрузим изображение из файла.
-        [$width, $height] = $this->sizesOfImageFile($file->getPathname());
-
-        if ($imagetype === ImageType::WEBP) {
-            $info = $this->webpInfo($file->getPathname());
-
-            // Если не удалось определить информацию об webp файле, проверку не делаем.
-            if ($info !== null) {
-                if (isset($info['animation']) && $info['animation'] === true) {
-                    throw new ImagingException(__('imaging.gd_webp_animation_error'));
-                }
-            }
-        }
-
-        $tmp_image = $process_function($file->getPathname());
-
-        if ($tmp_image === false) {
-            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => $process_function]));
-        }
-
-//        // Создадим новое прозрачное изображение и наложим на него загруженное.
-//        $image = $this->createTransparentImage($width, $height, $imagetype);
-//
-//        if (!imagecopy($image, $tmp_image, 0, 0, 0, 0, $width, $height)) {
-//            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagecopy']));
-//        }
-//
-//        return $image;
-
-        return [$tmp_image, $width, $height];
-    }
-
-	/**
-	 * Добавить фон на текущее изображение.
-	 *
-	 * @param ImageType $imagetype
-	 * @return void
-	 *
-	 * @throws ImagingException
-	 */
-	private function addBackground(ImageType $imagetype): void
-	{
-		// По логике вещей - цвет фона нужен только, если он задан или это непрозрачное изображение!
-		// TODO: Пока отключим!
-
-//        $bgcolor = $this->bgcolor;
-//
-//        if (in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES) && $bgcolor === null) {
-//            $bgcolor = $this->second_bgcolor;
-//        }
-//
-//        if ($bgcolor) {
-//            [$width, $height] = $this->sizes();
-//            $bg_image = $this->createTransparentImage($width, $height, $imagetype);
-//            $color = $this->createColorFromHex($bg_image, $bgcolor, 100);
-//            imagefill($bg_image, 0, 0, $color);
-//
-//            $this->imageMerge($bg_image, $this->image, 0, 0, 100, $this->imagetype);
-//            $this->image = $bg_image;
-//        }
-	}
-
-    /**
-     * Создает новое прозрачное изображение размера $width x $height.
-     *
-     * @param int $width Ширина создаваемого изображения.
-     * @param int $height Высота создаваемого изображения.
-     * @param ImageType $imagetype Тип создаваемого изображения.
-     * @return GdImage
-     *
-     * @throws ImagingException
-     */
-    private function createTransparentImage(
-        int $width,
-        int $height,
-        ImageType $imagetype
-    ): GdImage
-    {
-        // 1. Создаем "пустое" прозрачное изображение, для этого
-		// создаем чистое, полноцветное изображение.
-        $image = imagecreatetruecolor($width, $height);
-        if ($image === false) {
-            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagecreatetruecolor']));
-        }
-
-		// Указываем, что это изображение имеет альфа канал.
-        $result = imagesavealpha($image, true);
-        if ($result === false) {
-            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagesavealpha']));
-        }
-
-        // 2. Определяем цвет фона и создаем сам цвет.
-        $bgcolor = $this->bgcolor;
-
-        if (
-			$bgcolor === null
-			&& in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES, true)
-		) {
-            $bgcolor = $this->second_bgcolor;
-        }
-
-        $bgcolor = $this->createColorFromHex($image, $bgcolor, 0);
-
-        // Устанавливаем цвет, для этого переводим режим наложения в значение false,
-		// добавляем фоновый цвет, затем переключаем его обратно.
-        $result = imagealphablending($image, false);
-        if ($result === false) {
-            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagealphablending']));
-        }
-
-        $result = imagefilledrectangle($image, 0, 0, $width, $height, $bgcolor);
-        if ($result === false) {
-            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagefilledrectangle']));
-        }
-
-        $result = imagealphablending($image, true);
-        if ($result === false) {
-            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagealphablending']));
-        }
-
-        return $image;
-    }
-
     /**
      * Get WebP file info.
      *
@@ -553,7 +394,7 @@ final class GdHandler extends AbstractHandler
      * @param string $file
      * @return array|null Return associative array if success, return `null` for otherwise.
      */
-    private function webpInfo(string $file): array|null
+    private static function webpInfo(string $file): array|null
     {
         $file = realpath($file);
 
@@ -606,6 +447,158 @@ final class GdHandler extends AbstractHandler
 		}
 
         return $answer;
+    }
+
+    // endregion
+
+    // region Вспомогательные закрытые методы.
+
+    /**
+     * Создает новое прозрачное изображение размера $width x $height.
+     *
+     * @param int $width Ширина создаваемого изображения.
+     * @param int $height Высота создаваемого изображения.
+     * @return GdImage
+     *
+     * @throws ImagingException
+     */
+    private function createTransparentImage(
+        int $width,
+        int $height
+    ): GdImage
+    {
+        // 1. Создаем чистое, полноцветное, прозрачное изображение.
+        $image = imagecreatetruecolor($width, $height);
+        if ($image === false) {
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagecreatetruecolor']));
+        }
+
+        // Указываем, что это изображение имеет альфа канал.
+        $result = imagesavealpha($image, true);
+        if ($result === false) {
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagesavealpha']));
+        }
+
+        // 2. Определяем цвет фона и создаем сам цвет.
+        // Отметим, что фоновый цвет ни как не влияет на будущую прозрачность изображения (например, при сохранении).
+        $hex_color = $this->bgcolor;
+
+        if (
+            $hex_color === null
+            && in_array($this->origin_imagetype, self::NOT_TRANSPIRED_IMAGETYPES, true)
+        ) {
+            $hex_color = $this->second_bgcolor;
+        }
+
+        $bgcolor = self::createColorFromHex($image, $hex_color, 0);
+
+        // 3. Добавляем фоновый цвет в изображение.
+
+        // Устанавливаем цвет, для этого переводим режим наложения в значение false,
+        // добавляем фоновый цвет, затем переключаем его обратно.
+        $result = imagealphablending($image, false);
+        if ($result === false) {
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagealphablending']));
+        }
+
+        $result = imagefilledrectangle($image, 0, 0, $width, $height, $bgcolor);
+        if ($result === false) {
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagefilledrectangle']));
+        }
+
+        $result = imagealphablending($image, true);
+        if ($result === false) {
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagealphablending']));
+        }
+
+        return $image;
+    }
+
+    /**
+     * Объединяет изображения вместе.
+     *
+     * @param GdImage $bottom_image Изображение на которое накладывают изображение (нижнее).
+     * @param GdImage $top_image Накладываемое изображение (верхнее).
+     * @param int $x Положение верхнего изображения на X-оси.
+     * @param int $y Положение верхнего изображения на Y-оси.
+     * @param int $alpha Прозрачность верхнего изображения от 0 (прозрачное) до 100 (не прозрачное).
+     * @throws ImagingException
+     */
+    private function imageMerge(
+        GdImage $bottom_image,
+        GdImage $top_image,
+        int $x,
+        int $y,
+        int $alpha
+    ): void
+    {
+        $top_image_width = imagesx($top_image);
+        $top_image_height = imagesy($top_image);
+        if ($top_image_width === false) {
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagesx']));
+        }
+        if ($top_image_height === false) {
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagesy']));
+        }
+
+        $tmp_image = $this->createTransparentImage($top_image_width, $top_image_height);
+
+        $result_1 = imagecopy($tmp_image, $bottom_image, 0, 0, $x, $y, $top_image_width, $top_image_height);
+        $result_2 = imagecopy($tmp_image, $top_image, 0, 0, 0, 0, $top_image_width, $top_image_height);
+        if ($result_1 === false || $result_2 === false) {
+            throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagecopy']));
+        }
+
+        if (imagecolortransparent($top_image) === -1) {
+            $result = imagealphablending($bottom_image, false);
+            if ($result === false) {
+                throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagealphablending']));
+            }
+
+            $result = imagecopymerge($bottom_image, $tmp_image, $x, $y, 0, 0, $top_image_width, $top_image_height, $alpha);
+            if ($result === false) {
+                throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagecopymerge']));
+            }
+
+            $result = imagealphablending($bottom_image, true);
+            if ($result === false) {
+                throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagealphablending']));
+            }
+        } else {
+            $result = imagecopy($bottom_image, $tmp_image, $x, $y, 0, 0, $top_image_width, $top_image_height);
+            if ($result === false) {
+                throw new ImagingException(__('imaging.unknown_gd_error', ['func' => 'imagecopy']));
+            }
+        }
+    }
+
+    /**
+     * Добавить фон на текущее изображение.
+     *
+     * @return void
+     *
+     * @throws ImagingException
+     */
+    private function addBackground(): void
+    {
+        // Нужно прозрачное изображение.
+        if ($this->bgcolor === null) {
+            return;
+        }
+
+        [$width, $height] = $this->sizes();
+
+        // Создадим прозрачное изображение.
+        $bg_image = $this->createTransparentImage($width, $height);
+
+        // Создадим непрозрачный цвет.
+        $color = self::createColorFromHex($bg_image, $this->bgcolor, 100);
+
+        // Заливаем изображение непрозрачным цветом.
+        imagefill($bg_image, 0, 0, $color);
+
+        $this->imageMerge($bg_image, $this->image, 0, 0, 100);
+        $this->image = $bg_image;
     }
 
     // endregion

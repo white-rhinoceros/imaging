@@ -1,7 +1,6 @@
 <?php
 
 declare(strict_types=1);
-
 namespace Whiterhino\Imaging\Handlers;
 
 use Whiterhino\Imaging\Exceptions\ImagingException;
@@ -134,20 +133,13 @@ final class ImagickHandler extends AbstractHandler
      *
      * @throws ImagingException
      */
-    public function sizesOfImageFile(?string $pathname): array
+    public function sizes(): array
     {
         try {
-            if ($pathname === null) {
-                return [
-                    $this->imagick->getImageWidth(),
-                    $this->imagick->getImageHeight(),
-                ];
-            }
-
-            $tmp_image = new Imagick();
-            $tmp_image->readImage($pathname);
-
-            return [$tmp_image->getImageWidth(), $tmp_image->getImageHeight()];
+            return [
+                $this->imagick->getImageWidth(),
+                $this->imagick->getImageHeight(),
+            ];
         } catch (ImagickException $e) {
             throw new ImagingException(
                 __('imaging.imagick_exception', ['except' => $e->getMessage()]),
@@ -168,7 +160,8 @@ final class ImagickHandler extends AbstractHandler
         int|string $x1,
         int|string|null $y1,
         int|string|null $x2,
-        int|string|null $y2
+        int|string|null $y2,
+        bool $add_padding = false
     ): bool|string
     {
         [$x1, $y1, $x2, $y2] = $this->prepareCropCoords($x1, $y1, $x2, $y2);
@@ -365,7 +358,7 @@ final class ImagickHandler extends AbstractHandler
      */
     protected function createColorFromHex(?string $hex, ?int $alpha = null): ImagickPixel
     {
-        [$red, $green, $blue, $def_alpha] = $this->createDecColorFromHex($hex);
+        [$red, $green, $blue, $def_alpha] = self::createDecColorFromHex($hex);
 
         $alpha === null and $alpha = $def_alpha;
 

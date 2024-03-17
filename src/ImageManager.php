@@ -1,7 +1,6 @@
 <?php
 
 declare(strict_types=1);
-
 namespace Whiterhino\Imaging;
 
 use Whiterhino\Imaging\Exceptions\ImagingException;
@@ -43,10 +42,8 @@ final class ImageManager
     /**
      * @param string $origin_disk_name Диск с изображениями.
      * @param string $handler_name Имя обработчика (драйвера).
-     * @param ImageType|null $imagetype Тип изображения, в котором будут сохраняться обработанные файлы.
-     *                                  NULL - использовать оригинальный формат.
-	 * @param array $config Опциональный конфиг для драйвера. Параметры переданные через конструктор
-	 * 						имеют первостепенное значение.
+     * @param ImageType|null $imagetype Тип изображения, в котором будут сохраняться обработанные файлы, null - использовать формат исходного файла.
+	 * @param array $config Опциональный конфиг для драйвера.
 	 *
      * @throws ImagingException
      */
@@ -127,7 +124,7 @@ final class ImageManager
         }
 
         if ($this->imagetype !== null) {
-            $cached .= $this->imagetype->ext(true); 
+            $cached .= $this->imagetype->ext(true);
         } else {
             $extension = pathinfo($filename, PATHINFO_EXTENSION);
 			$imagetype = ImageType::getType($extension);
@@ -152,7 +149,7 @@ final class ImageManager
 
             $cached .= $imagetype->ext(true);
         }
-            
+
         // Если нужное изображение уже существует, то просто отдадим его.
         if (!$force && $this->checkCachedImg($filename, $cached) === true) {
             return $cached;
@@ -253,7 +250,7 @@ final class ImageManager
      *
      * @param string $filename Полный путь к изображению.
      * @return HandlerContract
-     * 
+     *
      * @throws ImagingException
      */
     private function createHandler(string $filename): HandlerContract
@@ -267,6 +264,10 @@ final class ImageManager
             ));
         }
 
-        return new $this->handler_name($file, null, $this->config);
+        return new $this->handler_name(
+            $file,
+            null,
+            $this->config
+        );
     }
 }

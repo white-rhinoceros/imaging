@@ -11,17 +11,6 @@ use Whiterhino\Imaging\Types\YPositionType;
 // Контракт драйвера обработчика изображения.
 interface HandlerContract
 {
-	/**
-	 * @param SplFileInfo $file Обрабатываемый файл.
-	 * @param ImageType|null $force_imagetype Позволяет принудительно рассматривать файл, как изображение данного типа.
-	 * @param array $config Дополнительные настройки.
-	 */
-    public function __construct(
-        SplFileInfo $file,
-        ?ImageType $force_imagetype = null,
-        array $config = []
-    );
-
     /**
      * Загружает изображение повторно.
      *

@@ -15,7 +15,6 @@ class Imaging
 
     // Константы определяющие способы обрезки изображений.
     public const CROP_MODE_IGNORE = 'ignore';
-
     public const CROP_MODE_ADDPADDING = 'addpadding';
 
     /**

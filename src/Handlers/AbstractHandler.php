@@ -1,7 +1,6 @@
 <?php
 
 declare(strict_types=1);
-
 namespace Whiterhino\Imaging\Handlers;
 
 use Closure;
@@ -50,10 +49,13 @@ abstract class AbstractHandler implements HandlerContract
 
 	// endregion
 
-    // region Реализация контракта HandlerContract
+    // region Конструктор
 
     /**
-     * @inheritDoc
+     * @param SplFileInfo $file Обрабатываемый файл.
+     * @param ImageType|null $force_imagetype Позволяет принудительно рассматривать файл, как изображение данного типа.
+     * @param array $config Дополнительные настройки.
+     * @throws ImagingException
      */
     public function __construct(
         SplFileInfo $file,
@@ -66,7 +68,16 @@ abstract class AbstractHandler implements HandlerContract
         if ($force_imagetype !== null) {
             $this->origin_imagetype = $force_imagetype;
         } else {
-            $this->origin_imagetype = ImageType::getType($file->getExtension());
+            $imagetype = ImageType::getType($file->getExtension());
+
+            if ($imagetype === null) {
+                throw new ImagingException(__(
+                    'imaging.unknown_imagetype',
+                    ['type' => $file->getExtension()]
+                ));
+            }
+
+            $this->origin_imagetype = $imagetype;
         }
 
         if (array_key_exists('bgcolor', $config)) {
@@ -94,6 +105,10 @@ abstract class AbstractHandler implements HandlerContract
         // Как именно загружается изображение нас здесь не интересует.
         $this->loadFromFile();
     }
+
+    // endregion
+
+    // region Реализация контракта HandlerContract
 
     /**
      * @inheritDoc
@@ -208,7 +223,7 @@ abstract class AbstractHandler implements HandlerContract
     public function runQueue(): static
     {
         foreach ($this->queued_actions as $action => $args) {
-            $exec = $this->callUserFuncArray([& $this, '_' . $action], $args);
+            $exec = self::callUserFuncArray([& $this, '_' . $action], $args);
 
             if ($exec !== true) {
                 $arg_str = [];
@@ -230,17 +245,16 @@ abstract class AbstractHandler implements HandlerContract
 
         // Очистим очередь обработки.
         $this->queued_actions = [];
-        
+
         return $this;
     }
 
     /**
-     * @inheritDoc
+     * Возвращает размеры обрабатываемого файла.
+     *
+     * @return array<int, int> Массив содержащий длину и ширину.
      */
-    public function sizes(): array
-    {
-        return $this->sizesOfImageFile(null);
-    }
+    abstract public function sizes(): array;
 
     /**
      * @inheritDoc
@@ -304,15 +318,22 @@ abstract class AbstractHandler implements HandlerContract
     // region Служебные методы
 
     /**
-     * Добавляет в очередь имя служебного метода что-бы выполнить в дальнейшем.
+     * Возвращает размер изображения.
      *
-     * @param string $function Имя метода без ведущего _.
-     * @param array $args Аргументы метода.
-     * @return void
+     * @throws ImagingException
      */
-    protected function queue(string $function, ...$args): void
+    protected static function sizesOfImageFile(string $pathname): array
     {
-        $this->queued_actions[$function] = $args;
+        $size = getimagesize($pathname);
+
+        if (!$size) {
+            throw new ImagingException(__(
+                'imaging.file_not_image',
+                ['file' => $pathname]
+            ));
+        }
+
+        return [$size[0], $size[1]];
     }
 
     /**
@@ -322,7 +343,7 @@ abstract class AbstractHandler implements HandlerContract
      * @param array $args
      * @return mixed
      */
-    protected function callUserFuncArray(callable $callback, array $args): mixed
+    protected static function callUserFuncArray(callable $callback, array $args): mixed
     {
         //return call_user_func_array($callback, $args);
 
@@ -360,50 +381,15 @@ abstract class AbstractHandler implements HandlerContract
     }
 
     /**
-     * Конвертирует проценты и отрицательные числа в абсолютные целые.
-     *
-     * @param string|int $input Входное значение.
-     * @param bool $xAxis Определяет с какой осью связано это значение X или Y.
-     * @return int
-     */
-    protected function convertNumber(string|int $input, bool $xAxis): int
-    {
-        // Получим размеры обрабатываемого изображения.
-        [$width, $height] = $this->sizes();
-        $size = $xAxis ? $width : $height;
-
-        if (is_string($input)) {
-            // Удалим двойные минусы, запятую конвертируем в точку, что бы устранить неоднозначность.
-            $input = str_replace(array('--', ','), array('', '.'), $input);
-
-            // Если заданы проценты - с конвертируем в абсолютные значения.
-            if (str_ends_with($input, '%')) {
-                $ans = (int)floor((substr($input, 0, -1) / 100) * $size);
-            } else {
-                $ans = (int)$input;
-            }
-        } else {
-            $ans = $input;
-        }
-
-        // Отрицательные числа соответствуют отсчету от нижнего правого угла.
-        if ($input < 0) {
-            $ans = $size + $input;
-        }
-
-        return $ans;
-    }
-
-    /**
      * Создает новый цвет используемый всеми драйверами на основе переданного hex цвета.
-	 * Если прозрачность не передана - то возвращается прозрачность равная 100 (не прозрачное изображение).
+     * Если прозрачность не передана - то возвращается прозрачность равная 100 (не прозрачное изображение).
      *
      * @param string|null $hex hex код цвета.
      * @return array rgba представление hex цвета и alpha значения.
      *
      * @throws ImagingException
      */
-    protected function createDecColorFromHex(?string $hex): array
+    protected static function createDecColorFromHex(?string $hex): array
     {
         if ($hex === null) {
             $red = 0;
@@ -449,6 +435,53 @@ abstract class AbstractHandler implements HandlerContract
     }
 
     /**
+     * Добавляет в очередь имя служебного метода что-бы выполнить в дальнейшем.
+     *
+     * @param string $function Имя метода без ведущего _.
+     * @param array $args Аргументы метода.
+     * @return void
+     */
+    protected function queue(string $function, ...$args): void
+    {
+        $this->queued_actions[$function] = $args;
+    }
+
+    /**
+     * Конвертирует проценты и отрицательные числа в абсолютные целые.
+     *
+     * @param string|int $input Входное значение.
+     * @param bool $xAxis Определяет с какой осью связано это значение X или Y.
+     * @return int
+     */
+    protected function convertNumber(string|int $input, bool $xAxis): int
+    {
+        // Получим размеры обрабатываемого изображения.
+        [$width, $height] = $this->sizes();
+        $size = $xAxis ? $width : $height;
+
+        if (is_string($input)) {
+            // Удалим двойные минусы, запятую конвертируем в точку, что бы устранить неоднозначность.
+            $input = str_replace(array('--', ','), array('', '.'), $input);
+
+            // Если заданы проценты - с конвертируем в абсолютные значения.
+            if (str_ends_with($input, '%')) {
+                $ans = (int)floor((substr($input, 0, -1) / 100) * $size);
+            } else {
+                $ans = (int)$input;
+            }
+        } else {
+            $ans = $input;
+        }
+
+        // Отрицательные числа соответствуют отсчету от нижнего правого угла.
+        if ($input < 0) {
+            $ans = $size + $input;
+        }
+
+        return $ans;
+    }
+
+    /**
      * Загружает изображение из файла.
      *
      * @return void
@@ -472,18 +505,9 @@ abstract class AbstractHandler implements HandlerContract
      */
     abstract protected function getBlob(ImageType $imagetype): string;
 
-
-    /**
-     * Возвращает размеры переданного файла с изображением или текущего обрабатываемого файла.
-     *
-     * @param string|null $pathname Полный путь к файлу.
-     * @return array<int, int> Массив содержащий длину и ширину.
-     */
-    abstract protected function sizesOfImageFile(?string $pathname): array;
-
     // endregion
 
-    // region Методы обработки изображения
+    // region Абстрактные методы обработки изображения.
 
     /**
      * Обрезать изображение. Метод для постановки в очередь.
@@ -494,14 +518,13 @@ abstract class AbstractHandler implements HandlerContract
      * Пример вызова:
      *     crop(10, '10.5%') - обрезать изображение на 10 пикселей с лева и справа и на 10% сверху и снизу;
      *     crop(20) - обрезать по кругу на 20 пикселей;
-     *     crop(10, 30, '30%') - с верху 10 пикселей, с лева 30 пикселей, снизу и справа 30%.
+     *     crop(10, 30, '30%') - сверху 10 пикселей, с лева 30 пикселей, снизу и справа 30%.
      *
      * @param int|string $x1 X - координата первого набора.
      * @param int|string|null $y1 Y - координата первого набора.
      * @param int|string|null $x2 X - координата второго набора.
      * @param int|string|null $y2 Y - координата второго набора.
-     * @param bool $add_padding Следует ли добавить поля, если изображение увеличивается (в противном случае
-     *                          увеличение холста изображения не будет).
+     * @param bool $add_padding Следует ли добавить поля, если изображение увеличивается (в противном случае увеличение холста изображения не будет).
      * @return bool|string True в случае успех, строка с описанием ошибки в противном случае.
      */
     abstract protected function _crop(
@@ -727,7 +750,7 @@ abstract class AbstractHandler implements HandlerContract
             ));
         }
 
-        [$wm_width, $wm_height] = $this->sizesOfImageFile($filename->getPathname());
+        [$wm_width, $wm_height] = self::sizesOfImageFile($filename->getPathname());
         [$src_width, $src_height]  = $this->sizes();
 
         // Получим отступы по x и y.

@@ -29,7 +29,10 @@ class ImagingServiceProvider  extends ServiceProvider
 
         $this->publishes([$configPath => $this->app->configPath('imaging.php')], 'config');
 
+        // Это только при публикации пакета при вызове команды аля
+        // php artisan vendor:publish --provider="Wakebit\LaravelCycle\ServiceProvider" --tag=config
 
+        // или тоже всегда!
     }
 
 }
