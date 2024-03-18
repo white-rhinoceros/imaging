@@ -155,6 +155,8 @@ final class ImagickHandler extends AbstractHandler
 
     /**
      * @inheritDoc
+     *
+     * Параметр $add_padding в настоящее время не поддерживается.
      */
     protected function _crop(
         int|string $x1,
@@ -295,7 +297,7 @@ final class ImagickHandler extends AbstractHandler
     {
         try {
             // Или это не прозрачное изображение или цвет фона требуется.
-            if (in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES) || $this->bgcolor !== null) {
+            if ($this->bgcolor !== null || in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES, true)) {
                 [$width, $height] = $this->sizes();
                 $bgcolor = $this->getConfBgColor($imagetype);
 
@@ -338,7 +340,7 @@ final class ImagickHandler extends AbstractHandler
     {
         $bgcolor = $this->bgcolor;
 
-        if (in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES) && $bgcolor === null) {
+        if ($bgcolor === null && in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES, true)) {
             $bgcolor = $this->second_bgcolor;
         }
 

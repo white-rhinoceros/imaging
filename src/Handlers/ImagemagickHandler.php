@@ -123,9 +123,9 @@ final class ImagemagickHandler extends AbstractHandler
         $new = "'" . $pathname . "'";
 
         if(
-            in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES, true)
-            && $this->quality > 0
+            $this->quality > 0
             && $this->quality < 100
+            && in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES, true)
         ) {
             $quality = "'" . $this->quality . "%'";
             $this->exec(
@@ -152,9 +152,9 @@ final class ImagemagickHandler extends AbstractHandler
         $image = "'" . $this->temp_image . "'";
 
         if (
-            in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES)
-            && $this->quality > 0
+            $this->quality > 0
             && $this->quality < 100
+            && in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES, true)
         ) {
             $quality = "'" . $this->quality . "%'";
 
@@ -355,10 +355,10 @@ final class ImagemagickHandler extends AbstractHandler
      */
     private function addBackground(ImageType $imagetype): void
     {
-        if (in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES) || $this->bgcolor !== null) {
+        if ($this->bgcolor !== null || in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES, true)) {
             $bgcolor = $this->bgcolor;
 
-            if (in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES) && $bgcolor === null) {
+            if ($bgcolor === null || in_array($imagetype, self::NOT_TRANSPIRED_IMAGETYPES, true)) {
                 $bgcolor = $this->second_bgcolor;
             }
 

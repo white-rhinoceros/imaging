@@ -2,6 +2,7 @@
 
 namespace Whiterhino\Imaging;
 
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Config;
 use Whiterhino\Imaging\Exceptions\ImagingException;
 use Whiterhino\Imaging\Handlers\HandlerContract;
@@ -26,19 +27,23 @@ class Imaging
      *     crop('public:image.jpg', 10, '10%') - обрезать изображение на 10 пикселей с лева и справа
      *     и на 10% сверху и снизу;
      *     crop('public:image.jpg', 20) - обрезать по кругу на 20 пикселей;
-     *     crop('public:image.jpg', 10, 30, '30%') - с верху 10 пикселей, с лева 30 пикселей, снизу и
+     *     crop('public:image.jpg', 10, 30, '30%') - сверху 10 пикселей, с лева 30 пикселей, снизу и
      *     справа 30%.
      *
+     * @param string $filepath
+     * @param string|null $disk
      * @param int|string $x1 X - координата первого набора.
      * @param int|string|null $y1 Y - координата первого набора.
      * @param int|string|null $x2 X - координата второго набора.
      * @param int|string|null $y2 Y - координата второго набора.
+     * @param string $mode
      * @return string Ссылка на обработанный файл.
      *
      * @throws ImagingException
      */
     public static function crop(
-        string $filename,
+        string $filepath,
+        ?string $disk,
         int|string $x1,
         int|string|null $y1,
         int|string|null $x2,
@@ -46,20 +51,13 @@ class Imaging
         string $mode = self::CROP_MODE_IGNORE
     ): string
     {
-        [$disk, $filepath] = self::getDiskAndFilename($filename);
-
         $cached = self::getFilenameForCache(
             $disk,
             $filepath,
             '-crop-' . $mode . '-' . $x1 . 'x' . $y1 . 'x' . $x2 . 'x' . $y2
         );
 
-        $manager = new ImageManager(
-            $disk,
-            Config::get('imaging.def_target_disk'),
-            Config::get('imaging.def_handler'),
-            Config::get('imaging.def_imagetype')
-        );
+        $manager = App::make(ImageManager::class, [$disk]);
 
         $processed_file = $manager->make(
             $filepath,
@@ -73,7 +71,8 @@ class Imaging
     /**
      * Изменяет размер изображения.
      *
-     * @param string $filename Имя файла на диске.
+     * @param string $filepath
+     * @param string|null $disk
      * @param int $width Новая ширина.
      * @param int $height Новая длина.
      * @param string $mode Константа метода изменения изображения.
@@ -81,22 +80,21 @@ class Imaging
      *
      * @throws ImagingException
      */
-    public function resize(string $filename, int $width, int $height, string $mode = self::RESIZE_MODE_PAD): string
+    public function resize(
+        string $filepath,
+        ?string $disk,
+        int $width,
+        int $height,
+        string $mode = self::RESIZE_MODE_PAD
+    ): string
     {
-        [$disk, $filepath] = self::getDiskAndFilename($filename);
-
         $cached = self::getFilenameForCache(
             $disk,
-            $filename,
+            $filepath,
             '-resize-' . $mode . '-' . $width . 'x' . $height
         );
 
-        $manager = new ImageManager(
-            $disk,
-            Config::get('imaging.def_target_disk'),
-            Config::get('imaging.def_handler'),
-            Config::get('imaging.def_imagetype')
-        );
+        $manager = App::make(ImageManager::class, [$disk]);
 
         $processed_file = $manager->make(
             $filepath,
@@ -164,7 +162,7 @@ class Imaging
 //     */
 //    public function fillWatermark(?string $filename): string
 //    {
-//        // Использовать rotate()
+//        Сложный make для водного знака.
 //    }
 
 //    /**
@@ -178,7 +176,7 @@ class Imaging
 //     */
 //    public function rotate(int $degrees): string
 //    {
-//
+//          Использовать rotate()
 //    }
 
     /**
@@ -192,31 +190,5 @@ class Imaging
     private static function getFilenameForCache(string $disk, string $filename, string $operation_suffix): string
     {
         return $disk . '/' . mb_substr($filename, 0, mb_strrpos($filename, '.')) . $operation_suffix;
-    }
-
-    /**
-     * Получает диск и путь к файлу из переданного полного имени файла.
-     *
-     * @param string $filename Имя файла. Может включать имя диска (формат: disk:filename).
-     * @return array Массив [Диск, Имя файла].
-     */
-    private static function getDiskAndFilename(string $filename): array
-    {
-        $parts = explode(':', $filename);
-
-        return match (count($parts)) {
-            1 => [
-                Config::get('imaging.def_origin_disk'),
-                $filename
-            ],
-            2 => [
-                $parts[0],
-                $parts[1]
-            ],
-            default => [
-                $parts[0],
-                implode(':', array_slice($parts, 1))
-            ],
-        };
     }
 }

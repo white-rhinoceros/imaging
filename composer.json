@@ -1,15 +1,32 @@
 {
     "name": "white-rhinoceros/imaging",
-    "description": "The Laravel package for manipulating images",
+    "description": "Laravel package for manipulating images",
     "type": "library",
-    "keywords": ["laravel"],
-    "license": "GNU 3",
+    "keywords": ["laravel", "image"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Denis Maysky"
+        }
+    ],
+    "require": {
+        "php": "^8.2"
+    },
     "autoload": {
         "psr-4": {
             "Whiterhino\\Imaging\\": "src/"
         }
     },
-    "require": {
-        "php": "^8.2"
-    }
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Whiterhino\\Imaging\\ImagingServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
 }

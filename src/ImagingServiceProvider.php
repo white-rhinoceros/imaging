@@ -2,9 +2,11 @@
 
 namespace Whiterhino\Imaging;
 
+use Illuminate\Contracts\Config\Repository as ConfigRepository;
+use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\ServiceProvider;
 
-class ImagingServiceProvider  extends ServiceProvider
+class ImagingServiceProvider extends ServiceProvider
 {
     /**
      * Register any application services.
@@ -13,9 +15,21 @@ class ImagingServiceProvider  extends ServiceProvider
      */
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__.'/../config/imaging.php', 'fortify');
+        // Привязываем способ создания ImageManager сервиса.
+        // В приложении этот сервис можно получить так:
+        // $manager = App::make(ImageManager::class, 'public');
+        // Где public - диск на котором ищутся файлы для обработки.
+        $this->app->bind(ImageManager::class, function (Container $app, array $params) {
+            /** @var ConfigRepository $laravelConfig */
+            $laravel_config = $app->make(ConfigRepository::class);
 
-        // Это как-то выполняется всегда!!!
+            return new ImageManager(
+                $params[0],
+                $laravel_config->get('imaging.def_target_disk'),
+                $laravel_config->get('imaging.def_handler'),
+                $laravel_config->get('imaging.def_imagetype')
+            );
+        });
     }
 
     /**
@@ -25,14 +39,22 @@ class ImagingServiceProvider  extends ServiceProvider
      */
     public function boot(): void
     {
-        $configPath = __DIR__ . '/../config/imaging.php';
+        // После установки пакета, необходимо выполнить:
+        // php artisan vendor:publish --provider="Whiterhino\Imaging\ImagingServiceProvider"
 
-        $this->publishes([$configPath => $this->app->configPath('imaging.php')], 'config');
+        // Если надо только опубликовать конфиг:
+        // php artisan vendor:publish --provider="Whiterhino\Imaging\ImagingServiceProvider" --tag=imaging-config
 
-        // Это только при публикации пакета при вызове команды аля
-        // php artisan vendor:publish --provider="Wakebit\LaravelCycle\ServiceProvider" --tag=config
+        if ($this->app->runningInConsole()) {
+            $this->publishes([
+                __DIR__.'/../stubs/imaging.php' => config_path('imaging.php'),
+            ], 'imaging-config');
 
-        // или тоже всегда!
+            $this->publishes([
+                __DIR__.'/../lang/en/imaging.php' => lang_path('en/imaging.php'),
+                __DIR__.'/../lang/ru/imaging.php' => lang_path('ru/imaging.php'),
+            ], 'imaging-lang');
+        }
     }
 
 }
