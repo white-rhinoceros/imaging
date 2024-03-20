@@ -17,7 +17,7 @@ class ImagingServiceProvider extends ServiceProvider
     {
         // Привязываем способ создания ImageManager сервиса.
         // В приложении этот сервис можно получить так:
-        // $manager = App::make(ImageManager::class, 'public');
+        // $manager = App::make(ImageManager::class, ['public']);
         // Где public - диск на котором ищутся файлы для обработки.
         $this->app->bind(ImageManager::class, function (Container $app, array $params) {
             /** @var ConfigRepository $laravelConfig */
