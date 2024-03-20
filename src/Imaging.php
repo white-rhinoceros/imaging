@@ -4,6 +4,7 @@ namespace Whiterhino\Imaging;
 
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Config;
+use SplFileInfo;
 use Whiterhino\Imaging\Exceptions\ImagingException;
 use Whiterhino\Imaging\Handlers\HandlerContract;
 
@@ -18,17 +19,19 @@ class Imaging
     public const CROP_MODE_IGNORE = 'ignore';
     public const CROP_MODE_ADDPADDING = 'addpadding';
 
+    // Константы определяющие способ наложения водного знака.
+    public const WATERMARK_MODE_SINGLE = 'single';
+    public const WATERMARK_MODE_FILL = 'fill';
+
     /**
      * Обрезать изображение используя координаты или проценты.
      * Положительные целые числа или проценты суть координаты отсчитываемые от верхнего, левого угла.
      * Отрицательные целые числа или проценты суть координаты отсчитываемые от нижнего, правого угла.
      *
      * Пример вызова:
-     *     crop('public:image.jpg', 10, '10%') - обрезать изображение на 10 пикселей с лева и справа
-     *     и на 10% сверху и снизу;
+     *     crop('public:image.jpg', 10, '10%') - обрезать изображение на 10 пикселей с лева и справа и на 10% сверху и снизу;
      *     crop('public:image.jpg', 20) - обрезать по кругу на 20 пикселей;
-     *     crop('public:image.jpg', 10, 30, '30%') - сверху 10 пикселей, с лева 30 пикселей, снизу и
-     *     справа 30%.
+     *     crop('public:image.jpg', 10, 30, '30%') - сверху 10 пикселей, с лева 30 пикселей, снизу и справа 30%.
      *
      * @param string $filepath
      * @param string|null $disk
@@ -80,7 +83,7 @@ class Imaging
      *
      * @throws ImagingException
      */
-    public function resize(
+    public static function resize(
         string $filepath,
         ?string $disk,
         int $width,
@@ -100,7 +103,7 @@ class Imaging
             $filepath,
             $cached,
             function(HandlerContract $image) use ($width, $height, $mode) {
-                // Изменение размера.
+                // Учитываем режим изменение размера.
                 switch ($mode) {
                     case self::RESIZE_MODE_STRETCH:
                         $image->resize($width, $height, false);
@@ -120,64 +123,103 @@ class Imaging
         return $manager->generateUrl($processed_file);
     }
 
-//    /**
-//     * Добавляет водный знак на изображение.
-//     *
-//     * @param string|null $filename Файл водного знака.
-//     * @return string Ссылка на обработанный файл.
-//     *
-//     * @throws ImagingException
-//     */
-//    public function watermark(?string $filename): string
-//    {
-//        $filename = $filename ?? Config::get('imaging.watermark_filename');
-//
-//        $cached_img_filename = $this->getFilenameForCache(
-//            $filename,
-//            '-watermark-' . md5($filename)
-//        );
-//
-//        return $this->make(
-//            $filename,
-//            $cached_img_filename,
-//            function(HandlerContract $image) use ($filename) {
-//                $image->watermark(
-//                    new SplFileInfo($filename),
-//                    Config::get('imaging.watermark_x_position'),
-//                    Config::get('imaging.watermark_y_position'),
-//                    Config::get('imaging.watermark_x_pad'),
-//                    Config::get('imaging.watermark_y_pad')
-//                );
-//            }
-//        );
-//    }
+    /**
+     * Добавляет водный знак на изображение.
+     *
+     * @param string $filepath
+     * @param string|null $disk
+     * @param string|null $filename Файл водного знака (абсолютное расположение).
+     * @param string $mode Режим создания водного знака.
+     * @return string Ссылка на обработанный файл.
+     *
+     * @throws ImagingException
+     */
+    public static function watermark(
+        string $filepath,
+        ?string $disk,
+        ?string $filename,
+        string $mode = self::WATERMARK_MODE_SINGLE,
+    ): string
+    {
+        /** @var string $def_wm */
+        $def_wm = Config::get('imaging.watermark_filename');
+        $filename = $filename ?? $def_wm;
 
-//    /**
-//     * Заполняет изображение водными знаками.
-//     *
-//     * @param string|null $filename Файл водного знака.
-//     * @return string Ссылка на обработанный файл.
-//     *
-//     * @throws ImagingException
-//     */
-//    public function fillWatermark(?string $filename): string
-//    {
-//        Сложный make для водного знака.
-//    }
+        if (!is_readable($filename)) {
+            if (Config::get('imaging.debug')) {
+                throw new ImagingException(__(
+                    'imaging.file_is_unreadable',
+                    ['file' => $filename]
+                ));
+            }
 
-//    /**
-//     * Поворачивает изображение.
-//     *
-//     * @param int $degrees Угол поворота по часовой стрелке (положительное число) и против часовой
-//     *                     стрелки (отрицательное число).
-//     * @return string Ссылка на обработанный файл.
-//     *
-//     * @throws ImagingException
-//     */
-//    public function rotate(int $degrees): string
-//    {
-//          Использовать rotate()
-//    }
+            return '';
+        }
+
+        $cached = self::getFilenameForCache(
+            $disk,
+            $filepath,
+            '-watermark-' . md5($filename)
+        );
+
+        $manager = App::make(ImageManager::class, [$disk]);
+
+        $processed_file = $manager->make(
+            $filepath,
+            $cached,
+            function(HandlerContract $image) use ($filename) {
+                $image->watermark(
+                    new SplFileInfo($filename),
+                    Config::get('imaging.watermark_x_position'),
+                    Config::get('imaging.watermark_y_position'),
+                    Config::get('imaging.watermark_x_pad'),
+                    Config::get('imaging.watermark_y_pad')
+                );
+            }
+        );
+
+        return $manager->generateUrl($processed_file);
+    }
+
+    /**
+     * Изменяет размер изображения и добавляет водный знак.
+     *
+     * @param string $filepath
+     * @param string|null $disk
+     * @param int $width Новая ширина.
+     * @param int $height Новая длина.
+     * @param string|null $filename Файл водного знака (абсолютное расположение).
+     * @param string $mode Режим создания водного знака.
+     * @return string Ссылка на обработанный файл.
+     *
+     * @throws ImagingException
+     */
+    public static function resizeAndWatermark(
+        string $filepath,
+        ?string $disk,
+        int $width,
+        int $height,
+        ?string $filename,
+        string $mode = self::WATERMARK_MODE_SINGLE,
+    ): string
+    {
+        throw new \RuntimeException("Метод пока не реализован");
+    }
+
+
+
+    /**
+     * Поворачивает изображение.
+     *
+     * @param int $degrees Угол поворота по часовой стрелке (положительное число) и против часовой стрелки (отрицательное число).
+     * @return string Ссылка на обработанный файл.
+     *
+     * @throws ImagingException
+     */
+    public static function rotate(int $degrees): string
+    {
+        throw new \RuntimeException("Метод пока не реализован");
+    }
 
     /**
      * Создает имя файла для обработанного изображения.
