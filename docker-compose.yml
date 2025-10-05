@@ -1,0 +1,17 @@
+services:
+  tests:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      COMPOSER_HOME: /home/app/.composer
+      XDEBUG_MODE: off
+    tty: true
+    entrypoint: ["docker-php-entrypoint"]
+    command: ["php", "-v"]

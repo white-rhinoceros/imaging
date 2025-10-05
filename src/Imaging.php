@@ -40,7 +40,7 @@ class Imaging
      * @param int|string|null $x2 X - координата второго набора.
      * @param int|string|null $y2 Y - координата второго набора.
      * @param string $mode
-     * @return string Ссылка на обработанный файл.
+     * @return array [Файл, Ссылка на обработанный файл]
      *
      * @throws ImagingException
      */
@@ -52,7 +52,7 @@ class Imaging
         int|string|null $x2,
         int|string|null $y2,
         string $mode = self::CROP_MODE_IGNORE
-    ): string
+    ): array
     {
         $cached = self::getFilenameForCache(
             $disk,
@@ -68,7 +68,7 @@ class Imaging
             fn(HandlerContract $image) => $image->crop($x1, $y1, $x2, $y2, !($mode === self::CROP_MODE_IGNORE))
         );
 
-        return $manager->generateUrl($processed_file);
+        return [$processed_file, $manager->generateUrl($processed_file)];
     }
 
     /**
@@ -79,7 +79,7 @@ class Imaging
      * @param int $width Новая ширина.
      * @param int $height Новая длина.
      * @param string $mode Константа метода изменения изображения.
-     * @return string Ссылка на обработанный файл.
+     * @return array [Файл, Ссылка на обработанный файл]
      *
      * @throws ImagingException
      */
@@ -89,7 +89,7 @@ class Imaging
         int $width,
         int $height,
         string $mode = self::RESIZE_MODE_PAD
-    ): string
+    ): array
     {
         $cached = self::getFilenameForCache(
             $disk,
@@ -120,7 +120,7 @@ class Imaging
             }
         );
 
-        return $manager->generateUrl($processed_file);
+        return [$processed_file, $manager->generateUrl($processed_file)];
     }
 
     /**
@@ -130,8 +130,7 @@ class Imaging
      * @param string|null $disk
      * @param string|null $filename Файл водного знака (абсолютное расположение).
      * @param string $mode Режим создания водного знака.
-     * @return string Ссылка на обработанный файл.
-     *
+     * @return array [Файл, Ссылка на обработанный файл]*
      * @throws ImagingException
      */
     public static function watermark(
@@ -139,7 +138,7 @@ class Imaging
         ?string $disk,
         ?string $filename,
         string $mode = self::WATERMARK_MODE_SINGLE,
-    ): string
+    ): array
     {
         /** @var string $def_wm */
         $def_wm = Config::get('imaging.watermark_filename');
@@ -153,7 +152,7 @@ class Imaging
                 ));
             }
 
-            return '';
+            return [];
         }
 
         $cached = self::getFilenameForCache(
@@ -178,7 +177,7 @@ class Imaging
             }
         );
 
-        return $manager->generateUrl($processed_file);
+        return [$processed_file, $manager->generateUrl($processed_file)];
     }
 
     /**
@@ -190,7 +189,7 @@ class Imaging
      * @param int $height Новая длина.
      * @param string|null $filename Файл водного знака (абсолютное расположение).
      * @param string $mode Режим создания водного знака.
-     * @return string Ссылка на обработанный файл.
+     * @return array [Файл, Ссылка на обработанный файл]
      *
      * @throws ImagingException
      */
@@ -201,7 +200,7 @@ class Imaging
         int $height,
         ?string $filename,
         string $mode = self::WATERMARK_MODE_SINGLE,
-    ): string
+    ): array
     {
         throw new \RuntimeException("Метод пока не реализован");
     }
@@ -212,11 +211,11 @@ class Imaging
      * Поворачивает изображение.
      *
      * @param int $degrees Угол поворота по часовой стрелке (положительное число) и против часовой стрелки (отрицательное число).
-     * @return string Ссылка на обработанный файл.
+     * @return array [Файл, Ссылка на обработанный файл]
      *
      * @throws ImagingException
      */
-    public static function rotate(int $degrees): string
+    public static function rotate(int $degrees): array
     {
         throw new \RuntimeException("Метод пока не реализован");
     }
