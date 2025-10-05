@@ -27,9 +27,6 @@ return [
     'imagick_ext_missing' => "Не найдено расширение Imagick",
     'imagick_exception' => "Расширение Imagick выбросило исключение: ':except'",
 
-    'imagemagick_program_not_found' => "Исполняемый компонент Imagemagick ':program' не найдена",
-    'imagemagick_error_occurred' => "Выполнение команды Imagemagick ':command' завершилось ошибкой с кодом ':code'",
-
     'unknown_gd_error' => "Неизвестная ошибка во время выполнения GD функции ':func'",
     'gd_ext_missing' => "Не найдено расширение GD ':extension'",
     'gd_webp_animation_error' => 'Анимированные WEBP изображения не поддерживаются библиотекой GD',

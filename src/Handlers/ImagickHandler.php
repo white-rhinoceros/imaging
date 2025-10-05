@@ -212,8 +212,8 @@ final class ImagickHandler extends AbstractHandler
                 $tmp_image->compositeImage(
                     $this->imagick,
                     Imagick::COMPOSITE_DEFAULT,
-                    ($new_image_width - $width) / 2,
-                    ($new_image_height - $height) / 2
+                    (int) round(($new_image_width - $width) / 2),
+                    (int) round(($new_image_height - $height) / 2)
                 );
 
                 $this->imagick = $tmp_image;
@@ -243,13 +243,18 @@ final class ImagickHandler extends AbstractHandler
 
             $wm_image = new Imagick();
 
-            $wm_image->readImage($filename);
+            $wm_image->readImage($filename->getPathname());
             $wm_image->evaluateImage(
                 Imagick::EVALUATE_MULTIPLY,
                 $this->watermark_alpha / 100,
                 Imagick::CHANNEL_ALPHA
             );
-            $this->imagick->compositeImage($wm_image, Imagick::COMPOSITE_DEFAULT, $x, $y);
+            $this->imagick->compositeImage(
+                $wm_image,
+                Imagick::COMPOSITE_DEFAULT,
+                (int) $x,
+                (int) $y
+            );
 
             return true;
         } catch (ImagickException|InvalidArgumentException $e) {

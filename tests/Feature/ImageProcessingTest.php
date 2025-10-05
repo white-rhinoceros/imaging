@@ -5,27 +5,29 @@ declare(strict_types=1);
 namespace Whiterhino\Imaging\Tests\Feature;
 
 use Illuminate\Support\Facades\Storage;
+use Whiterhino\Imaging\Exceptions\ImagingException;
 use Whiterhino\Imaging\Imaging;
 use Whiterhino\Imaging\Tests\TestCase;
 
 final class ImageProcessingTest extends TestCase
 {
-    public function test_resize_and_watermark_creates_cached_file(): void
+    /**
+     * @dataProvider handlerProvider
+     */
+    public function test_resize_and_watermark_creates_cached_file(string $handler): void
     {
-        if (!function_exists('imagecreatetruecolor')) {
-            self::markTestSkipped('GD extension required.');
-        }
+        $this->skipIfHandlerUnavailable($handler);
+        $this->configureHandler($handler);
 
         Storage::fake('public');
         Storage::fake('imagecache');
 
-        Storage::disk('public')->put('source.png', $this->createPng(100, 100, [255, 0, 0]));
+        Storage::disk('public')->put('source.png', $this->readFixture('source/base.png'));
 
-        $watermarkPath = sys_get_temp_dir() . '/wm_' . uniqid('', true) . '.png';
-        file_put_contents($watermarkPath, $this->createPng(20, 20, [0, 0, 255]));
+        $watermarkPath = $this->copyFixtureToTemp('source/watermark.png');
 
         try {
-            [$cached, $url] = Imaging::resizeAndWatermark('source.png', 'public', 50, 50, $watermarkPath);
+            [$cached, $url] = Imaging::resizeAndWatermark('source.png', 'public', 100, 60, $watermarkPath);
 
             self::assertNotEmpty($cached);
             self::assertTrue(Storage::disk('imagecache')->exists($cached));
@@ -35,16 +37,88 @@ final class ImageProcessingTest extends TestCase
         }
     }
 
-    public function test_rotate_creates_cached_file(): void
+    /**
+     * @dataProvider handlerProvider
+     */
+    public function test_resize_and_watermark_uses_default_watermark_when_not_passed(string $handler): void
     {
-        if (!function_exists('imagecreatetruecolor')) {
-            self::markTestSkipped('GD extension required.');
-        }
+        $this->skipIfHandlerUnavailable($handler);
+
+        $watermarkPath = $this->fixturePath('source/watermark.png');
+        $this->configureHandler($handler, ['watermark_filename' => $watermarkPath]);
 
         Storage::fake('public');
         Storage::fake('imagecache');
 
-        Storage::disk('public')->put('source.png', $this->createPng(80, 40, [0, 255, 0]));
+        $source = $this->readFixture('source/base.png');
+        Storage::disk('public')->put('source.png', $source);
+
+        [$cached] = Imaging::resizeAndWatermark('source.png', 'public', 120, 80, null);
+
+        self::assertNotEmpty($cached);
+        self::assertTrue(Storage::disk('imagecache')->exists($cached));
+
+        $processed = Storage::disk('imagecache')->get($cached);
+        self::assertNotSame(md5($source), md5($processed));
+    }
+
+    /**
+     * @dataProvider handlerProvider
+     */
+    public function test_resize_and_watermark_returns_empty_when_debug_disabled_and_watermark_missing(string $handler): void
+    {
+        $this->skipIfHandlerUnavailable($handler);
+
+        $missing = $this->fixturePath('source/does-not-exist.png');
+        $this->configureHandler($handler, [
+            'watermark_filename' => $missing,
+            'debug' => false,
+        ]);
+
+        Storage::fake('public');
+        Storage::fake('imagecache');
+
+        Storage::disk('public')->put('source.png', $this->readFixture('source/base.png'));
+
+        $result = Imaging::resizeAndWatermark('source.png', 'public', 120, 60, null);
+
+        self::assertSame([], $result);
+        self::assertSame([], Storage::disk('imagecache')->allFiles());
+
+        $this->app['config']->set('imaging.debug', true);
+        $this->app['config']->set('imaging.watermark_filename', '');
+    }
+
+    /**
+     * @dataProvider handlerProvider
+     */
+    public function test_resize_and_watermark_throws_when_watermark_unreadable_in_debug(string $handler): void
+    {
+        $this->skipIfHandlerUnavailable($handler);
+        $this->configureHandler($handler);
+
+        Storage::fake('public');
+        Storage::fake('imagecache');
+
+        Storage::disk('public')->put('source.png', $this->readFixture('source/base.png'));
+
+        $this->expectException(ImagingException::class);
+
+        Imaging::resizeAndWatermark('source.png', 'public', 100, 60, $this->fixturePath('source/missing-watermark.png'));
+    }
+
+    /**
+     * @dataProvider handlerProvider
+     */
+    public function test_rotate_creates_cached_file(string $handler): void
+    {
+        $this->skipIfHandlerUnavailable($handler);
+        $this->configureHandler($handler);
+
+        Storage::fake('public');
+        Storage::fake('imagecache');
+
+        Storage::disk('public')->put('source.png', $this->readFixture('source/base.png'));
 
         [$cached, $url] = Imaging::rotate('source.png', 'public', 90);
 
@@ -53,17 +127,39 @@ final class ImageProcessingTest extends TestCase
         self::assertNotEmpty($url);
     }
 
-    private function createPng(int $width, int $height, array $rgb): string
+    /**
+     * @dataProvider handlerProvider
+     */
+    public function test_rotate_throws_when_source_missing_in_debug(string $handler): void
     {
-        $image = imagecreatetruecolor($width, $height);
-        $color = imagecolorallocate($image, $rgb[0], $rgb[1], $rgb[2]);
-        imagefill($image, 0, 0, $color);
+        $this->skipIfHandlerUnavailable($handler);
+        $this->configureHandler($handler);
 
-        ob_start();
-        imagepng($image);
-        $data = (string) ob_get_clean();
-        imagedestroy($image);
+        Storage::fake('public');
+        Storage::fake('imagecache');
 
-        return $data;
+        $this->expectException(ImagingException::class);
+
+        Imaging::rotate('missing.png', 'public', 45);
+    }
+
+    /**
+     * @dataProvider handlerProvider
+     */
+    public function test_rotate_returns_empty_when_debug_disabled_and_source_missing(string $handler): void
+    {
+        $this->skipIfHandlerUnavailable($handler);
+
+        $this->configureHandler($handler, ['debug' => false]);
+
+        Storage::fake('public');
+        Storage::fake('imagecache');
+
+        [$cached, $url] = Imaging::rotate('missing.png', 'public', 45);
+
+        self::assertSame('', $cached);
+        self::assertIsString($url);
+
+        $this->app['config']->set('imaging.debug', true);
     }
 }

@@ -75,8 +75,6 @@ final class ImageManager
 			'second_bgcolor' => Config::get('imaging.second_bgcolor'),
 			'quality' => Config::get('imaging.quality'),
 			'watermark_alpha' => Config::get('imaging.watermark_alpha'),
-			// Только для ImagemagickHandler драйвера.
-			'imagemagick_dir' => Config::get('imaging.imagemagick_dir'),
 			'temp_dir' => Config::get('imaging.temp_dir'),
 		];
 

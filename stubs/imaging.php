@@ -2,8 +2,7 @@
 
 use Whiterhino\Imaging\Handlers\{
 	GdHandler,
-	ImagickHandler,
-	ImagemagickHandler
+	ImagickHandler
 };
 
 use Whiterhino\Imaging\Types\{
@@ -18,14 +17,13 @@ return [
      | Обработчик по умолчанию.
      | -------------------------------------------------------------------------
      |
-     | Обработчик изображений по умолчанию. Возможные значения:
-     | GdHandler::class, ImagickHandler::class or ImagemagickHandler::class.
+    | Обработчик изображений по умолчанию. Возможные значения:
+    | GdHandler::class или ImagickHandler::class.
      |
      */
 
     'def_handler' => GdHandler::class,
     //'def_handler' => ImagickHandler::class,
-    //'def_handler' => ImagemagickHandler::class,
 
 
     /*
@@ -191,14 +189,4 @@ return [
     'watermark_y_pad' => 50,
 
 
-    /*
-     | -------------------------------------------------------------------------
-     | Путь к исполняемым файлам Imagemagick. Только для Imagemagick драйвера.
-     | -------------------------------------------------------------------------
-     |
-     | Абсолютный путь до библиотеки (исполняемым файлам) Imagemagick.
-     |
-     */
-
-    'imagemagick_dir' => '/usr/bin/',
 ];

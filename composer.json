@@ -11,7 +11,8 @@
     ],
     "require": {
         "php": "^8.2",
-        "ext-mbstring": "*"
+        "ext-mbstring": "*",
+        "ext-imagick": "*"
     },
     "autoload": {
         "psr-4": {

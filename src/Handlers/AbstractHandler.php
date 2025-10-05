@@ -232,6 +232,8 @@ abstract class AbstractHandler implements HandlerContract
                     $arg_str[$i] = var_export($args[$i], true);
                 }
 
+                $arg_str = implode(', ', $arg_str);
+
                 throw new ImagingException(__(
                     'imaging.call_user_func_error',
                     [
