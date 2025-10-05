@@ -6,6 +6,7 @@ namespace Whiterhino\Imaging\Tests;
 
 use Orchestra\Testbench\TestCase as Orchestra;
 use Whiterhino\Imaging\ImagingServiceProvider;
+use Whiterhino\Imaging\Types\ImageType;
 
 abstract class TestCase extends Orchestra
 {
@@ -56,6 +57,11 @@ abstract class TestCase extends Orchestra
         $config = require __DIR__ . '/../stubs/imaging.php';
         $config['temp_dir'] = storage_path('framework/cache/imaging-tests');
         $config['debug'] = true;
+
+        if (!function_exists('imagewebp')) {
+            // Fallback to a widely supported format when GD lacks WebP support.
+            $config['def_imagetype'] = ImageType::PNG;
+        }
 
         $app['config']->set('imaging', $config);
     }

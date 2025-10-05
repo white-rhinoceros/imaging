@@ -298,7 +298,7 @@ abstract class AbstractHandler implements HandlerContract
         ?int$y_pad
     ): static
     {
-        $this->queue('watermark', $filename, $x_pos);
+        $this->queue('watermark', $filename, $x_pos, $y_pos, $x_pad, $y_pad);
 
         return $this;
     }
@@ -801,6 +801,9 @@ abstract class AbstractHandler implements HandlerContract
                     ));
                 }
         }
+
+        $x = (int) min(max($x, 0), max(0, $src_width - $wm_width));
+        $y = (int) min(max($y, 0), max(0, $src_height - $wm_height));
 
         return [
             // В какое место положит водный знак на изображение.

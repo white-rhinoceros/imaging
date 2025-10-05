@@ -202,7 +202,47 @@ class Imaging
         string $mode = self::WATERMARK_MODE_SINGLE,
     ): array
     {
-        throw new \RuntimeException("Метод пока не реализован");
+        /** @var string $def_wm */
+        $def_wm = Config::get('imaging.watermark_filename');
+        $filename = $filename ?? $def_wm;
+
+        if (!is_readable($filename)) {
+            if (Config::get('imaging.debug')) {
+                throw new ImagingException(__(
+                    'imaging.file_is_unreadable',
+                    ['file' => $filename]
+                ));
+            }
+
+            return [];
+        }
+
+        $cached = self::getFilenameForCache(
+            $disk,
+            $filepath,
+            '-resize-watermark-' . $mode . '-' . $width . 'x' . $height . '-' . md5($filename)
+        );
+
+        $manager = App::make(ImageManager::class, [$disk]);
+
+        $processed_file = $manager->make(
+            $filepath,
+            $cached,
+            function (HandlerContract $image) use ($width, $height, $filename) {
+                // Сначала меняем размер согласно настройкам по умолчанию (pad).
+                $image->resize($width, $height, true, true);
+
+                $image->watermark(
+                    new SplFileInfo($filename),
+                    Config::get('imaging.watermark_x_position'),
+                    Config::get('imaging.watermark_y_position'),
+                    Config::get('imaging.watermark_x_pad'),
+                    Config::get('imaging.watermark_y_pad')
+                );
+            }
+        );
+
+        return [$processed_file, $manager->generateUrl($processed_file)];
     }
 
 
@@ -210,26 +250,47 @@ class Imaging
     /**
      * Поворачивает изображение.
      *
+     * @param string $filepath
+     * @param string|null $disk
      * @param int $degrees Угол поворота по часовой стрелке (положительное число) и против часовой стрелки (отрицательное число).
      * @return array [Файл, Ссылка на обработанный файл]
      *
      * @throws ImagingException
      */
-    public static function rotate(int $degrees): array
+    public static function rotate(string $filepath, ?string $disk, int $degrees): array
     {
-        throw new \RuntimeException("Метод пока не реализован");
+        $cached = self::getFilenameForCache(
+            $disk,
+            $filepath,
+            '-rotate-' . $degrees
+        );
+
+        $manager = App::make(ImageManager::class, [$disk]);
+
+        $processed_file = $manager->make(
+            $filepath,
+            $cached,
+            fn (HandlerContract $image) => $image->rotate($degrees)
+        );
+
+        return [$processed_file, $manager->generateUrl($processed_file)];
     }
 
     /**
      * Создает имя файла для обработанного изображения.
      *
-     * @param string $disk
+     * @param string|null $disk
      * @param string $filename
      * @param string $operation_suffix
      * @return string
      */
-    private static function getFilenameForCache(string $disk, string $filename, string $operation_suffix): string
+    private static function getFilenameForCache(?string $disk, string $filename, string $operation_suffix): string
     {
-        return $disk . '/' . mb_substr($filename, 0, mb_strrpos($filename, '.')) . $operation_suffix;
+        $dot_position = mb_strrpos($filename, '.');
+        $base_name = $dot_position === false ? $filename : mb_substr($filename, 0, $dot_position);
+
+        $prefix = $disk ? $disk . '/' : '';
+
+        return $prefix . $base_name . $operation_suffix;
     }
 }

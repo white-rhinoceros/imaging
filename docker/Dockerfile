@@ -7,6 +7,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         git \
         unzip \
+        pkg-config \
         libzip-dev \
         libpng-dev \
         libjpeg62-turbo-dev \
@@ -14,6 +15,7 @@ RUN apt-get update \
         libwebp-dev \
         libmagickwand-dev \
         imagemagick \
+        libsqlite3-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
     && docker-php-ext-install -j"$(nproc)" \
         exif \
