@@ -5,6 +5,7 @@ namespace Whiterhino\Imaging;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\ServiceProvider;
+use Whiterhino\Imaging\Console\DiagnoseCommand;
 
 class ImagingServiceProvider extends ServiceProvider
 {
@@ -54,6 +55,10 @@ class ImagingServiceProvider extends ServiceProvider
                 __DIR__.'/../lang/en/imaging.php' => lang_path('en/imaging.php'),
                 __DIR__.'/../lang/ru/imaging.php' => lang_path('ru/imaging.php'),
             ], 'imaging-lang');
+
+            $this->commands([
+                DiagnoseCommand::class,
+            ]);
         }
     }
 

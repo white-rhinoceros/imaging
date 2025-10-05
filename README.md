@@ -2,7 +2,7 @@
 
 *[English version](README.en.md)*
 
-Laravel-пакет для централизованной обработки изображений: изменение размеров, обрезка, накладывание водяных знаков и кеширование результатов на диске. Логика обработки вдохновлена подсистемой изображений FuelPHP 1.8.2, адаптированной под современные версии Laravel.
+Laravel-пакет для централизованной обработки изображений: изменение размеров, обрезка, накладывание водяных знаков и кеширование результатов на диске.
 
 ### Требования
 - PHP 8.2+
@@ -34,6 +34,7 @@ Laravel-пакет для централизованной обработки и
 - `bgcolor` и `second_bgcolor` — цвета фона при операциях с прозрачностью.
 - `quality` — качество сохраняемых изображений.
 - `watermark_*` — параметры водяного знака (файл, позиция, отступы, прозрачность).
+
 При необходимости можно указать собственные настройки для конкретного драйвера, создавая экземпляр `ImageManager` вручную и передавая конфиг пятым аргументом (см. ниже).
 
 ### Использование
@@ -58,8 +59,8 @@ use Whiterhino\Imaging\Imaging;
 
 ```php
 use Illuminate\Support\Facades\App;
-use Whiterhino\Imaging\Handlers\HandlerContract;
 use Whiterhino\Imaging\ImageManager;
+use Whiterhino\Imaging\Handlers\HandlerContract;
 use SplFileInfo;
 
 $manager = App::make(ImageManager::class, ['public']);
@@ -123,29 +124,50 @@ $customManager = new ImageManager(
    composer test
    ```
 
-#### Визуальные (интеграционные) тесты
-Для генерации визуальных фикстур запустите группу `visual` с переменной `IMAGING_VISUAL_FIXTURES=1`. Тесты создадут входные и выходные изображения в `tests/Fixtures/process/<handler>/{input,output}` для каждого доступного драйвера.
+#### Визуальные (интеграционные) тесты и снепшоты
+Визуальные тесты проверяют, что генерация изображений в GD и Imagick даёт ожидаемый результат. Они используют два набора файлов:
+- `tests/Fixtures/process/<handler>/input` и `.../output` — временные артефакты, удобные для просмотра.
+- `tests/Fixtures/snapshots/<handler>/*.png` — эталонные файлы, с которыми сравниваются текущие результаты.
 
-- Через Docker (переменную важно пробросить внутрь контейнера):
+**Обязательный шаг перед обычным тестовым прогоном** — сгенерировать снепшоты:
+```shell
+docker compose run --rm -e IMAGING_VISUAL_FIXTURES=1 \
+  tests vendor/bin/phpunit --group visual --testdox
+```
+Если оболочка не поддерживает `-e`, используйте обёртку:
+```shell
+docker compose run --rm tests \
+  bash -lc 'IMAGING_VISUAL_FIXTURES=1 vendor/bin/phpunit --group visual --testdox'
+```
+Локально команда выглядит так же, но без Docker:
+```shell
+IMAGING_VISUAL_FIXTURES=1 vendor/bin/phpunit --group visual --testdox
+```
+
+Что происходит:
+1. В `process/input` и `process/output` появляются файлы, чтобы можно было визуально изучить текущий результат.
+2. В `snapshots/` обновляются эталонные изображения.
+
+При обычном `composer test` временные файлы не сохраняются: тест считывает результат из кеша, сравнивает его по MD5 с соответствующим файлом в `snapshots/` и удаляет промежуточные данные. Если снепшота нет — тест помечается `skipped`. Поэтому после любой правки логики обязательно обновляйте эталоны.
+
+#### Coverage-тесты
+- `composer test:coverage` — локальный отчёт покрытия (нужен Xdebug).
+- Через Docker:
   ```shell
-  docker compose run --rm -e IMAGING_VISUAL_FIXTURES=1 tests vendor/bin/phpunit --group visual
-  ```
-  Если ваша оболочка не поддерживает `-e`, используйте обёртку:
-  ```shell
-  docker compose run --rm tests bash -lc 'IMAGING_VISUAL_FIXTURES=1 vendor/bin/phpunit --group visual'
-  ```
-- Локально:
-  ```shell
-  IMAGING_VISUAL_FIXTURES=1 vendor/bin/phpunit --group visual
+  docker compose run --rm -e XDEBUG_MODE=coverage tests \
+    vendor/bin/phpunit --configuration=phpunit.coverage.xml.dist
   ```
 
-Получившиеся изображения можно просматривать вручную или сравнивать с эталонными результатами. Повторный запуск перезапишет файлы, поэтому при необходимости сохраните артефакты отдельно.
+Отчёт сохраняется в каталоге `coverage/`.
 
-Если тестовый прогон завершается сообщением `Tests: 9, Assertions: 0, Skipped: 9`, значит в окружении недоступны один или несколько обработчиков (расширения GD/Imagick или бинарники ImageMagick). Используйте docker-контейнер из репозитория или установите соответствующие зависимости локально, чтобы тесты отработали полностью.
-
-Тесты используют `orchestra/testbench`, поэтому Laravel-приложение не требуется — достаточно PHP и расширений, необходимых для выбранного обработчика изображений.
+### Проверки качества
+- `composer lint` — проверка синтаксиса всех PHP-файлов.
+- `composer test` — запуск PHPUnit.
+- `composer test:coverage` — отчёт покрытия (требуется Xdebug; для Docker добавьте `-e XDEBUG_MODE=coverage`).
+- `docker compose run --rm -e XDEBUG_MODE=coverage tests vendor/bin/phpunit --configuration=phpunit.coverage.xml.dist` — альтернатива для генерации покрытия внутри контейнера.
 
 ### Полезно знать
 - Логи ошибок пишутся в канал `imaging`; настройте его в `config/logging.php`, чтобы не терять сообщения о недоступных файлах.
 - Для корректного формирования URL кешированных изображений диск `def_target_disk` должен быть публичным или иметь корректно настроенный `url`.
 - Если вы используете CDN, можно обернуть возвращаемый URL и подменять домен на стороне приложения.
+- Быстрая диагностика окружения: `php artisan imaging:diagnose` проверит доступность дисков, временной директории и необходимых расширений.

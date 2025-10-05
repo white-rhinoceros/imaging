@@ -124,29 +124,49 @@ The repository includes Docker tooling for isolated test runs.
    composer test
    ```
 
-#### Visual tests
-Generate visual fixtures by running the `visual` group with `IMAGING_VISUAL_FIXTURES=1`. The generated inputs and outputs are stored under `tests/Fixtures/process/<handler>/{input,output}`.
+#### Visual tests & snapshots
+Visual tests ensure GD and Imagick produce consistent imagery. Two directories are involved:
+- `tests/Fixtures/process/<handler>/input` and `.../output` — transient files generated during snapshot refresh; useful for visual inspection.
+- `tests/Fixtures/snapshots/<handler>/*.png` — canonical results that regular test runs compare against (via MD5).
 
-- In Docker (make sure the variable is passed into the container):
+**Mandatory step before running the full suite:** generate snapshots once.
+```shell
+docker compose run --rm -e IMAGING_VISUAL_FIXTURES=1 \
+  tests vendor/bin/phpunit --group visual --testdox
+```
+If your shell cannot pass `-e`, wrap the command:
+```shell
+docker compose run --rm tests \
+  bash -lc 'IMAGING_VISUAL_FIXTURES=1 vendor/bin/phpunit --group visual --testdox'
+```
+Locally, run the same command without Docker:
+```shell
+IMAGING_VISUAL_FIXTURES=1 vendor/bin/phpunit --group visual --testdox
+```
+
+This does two things:
+1. Stores the current inputs/outputs in `process/` to inspect them manually.
+2. Updates the snapshot files in `snapshots/` that regular tests compare with.
+
+During a normal `composer test` run no `process/` files are written — the test reads the latest processed image from cache, compares it to the snapshot, and deletes the temporary file. If the snapshot is missing, the test is skipped. Therefore, whenever logic changes, regenerate snapshots with the commands above.
+
+#### Coverage
+- `composer test:coverage` — local coverage report (requires Xdebug).
+- Docker alternative:
   ```shell
-  docker compose run --rm -e IMAGING_VISUAL_FIXTURES=1 tests vendor/bin/phpunit --group visual
+  docker compose run --rm -e XDEBUG_MODE=coverage tests \
+    vendor/bin/phpunit --configuration=phpunit.coverage.xml.dist
   ```
-  If your shell does not support `-e`, wrap the command:
-  ```shell
-  docker compose run --rm tests bash -lc 'IMAGING_VISUAL_FIXTURES=1 vendor/bin/phpunit --group visual'
-  ```
-- Locally:
-  ```shell
-  IMAGING_VISUAL_FIXTURES=1 vendor/bin/phpunit --group visual
-  ```
+Reports are written to `coverage/`.
 
-The resulting images can be reviewed manually. Re-running the command overwrites the fixtures, so archive them if needed.
-
-If you see `Tests: 9, Assertions: 0, Skipped: 9`, install the missing imaging extension or use the provided Docker image — the skip indicates that the current PHP runtime lacks `ext-gd` or `ext-imagick`.
-
-Tests rely on `orchestra/testbench`, so you do not need a full Laravel application — PHP plus the selected imaging extension is enough.
+### Quality checks
+- `composer lint` — syntax lint for all PHP files.
+- `composer test` — run PHPUnit.
+- `composer test:coverage` — coverage report (needs Xdebug; add `-e XDEBUG_MODE=coverage` inside Docker).
+- `docker compose run --rm -e XDEBUG_MODE=coverage tests vendor/bin/phpunit --configuration=phpunit.coverage.xml.dist` — Docker-friendly coverage command.
 
 ### Tips
 - Imaging errors are logged via the `imaging` log channel; configure it in `config/logging.php` to avoid missing warnings about missing files.
 - The target disk should be publicly accessible (or provide `url`/`temporaryUrl` configuration) for `generateUrl()` to return usable links.
 - Integrating with a CDN? Wrap the returned URL and adjust the host as needed.
+- Run `php artisan imaging:diagnose` to verify disks, temporary directory, and required extensions in the target environment.

@@ -4,28 +4,28 @@ ARG UID=1000
 ARG GID=1000
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        git \
-        unzip \
-        pkg-config \
-        libzip-dev \
-        libpng-dev \
-        libjpeg62-turbo-dev \
-        libfreetype6-dev \
-        libwebp-dev \
-        libmagickwand-dev \
-        imagemagick \
-        libsqlite3-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-    && docker-php-ext-install -j"$(nproc)" \
-        exif \
-        gd \
-        pdo_sqlite \
-        zip \
-    && pecl install imagick \
-    && docker-php-ext-enable imagick \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+      && apt-get install -y --no-install-recommends \
+          git \
+          unzip \
+          pkg-config \
+          libzip-dev \
+          libpng-dev \
+          libjpeg62-turbo-dev \
+          libfreetype6-dev \
+          libwebp-dev \
+          libmagickwand-dev \
+          imagemagick \
+          libsqlite3-dev \
+      && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
+      && docker-php-ext-install -j"$(nproc)" \
+          exif \
+          gd \
+          pdo_sqlite \
+          zip \
+      && pecl install imagick xdebug \
+      && docker-php-ext-enable imagick xdebug \
+      && apt-get clean \
+      && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
