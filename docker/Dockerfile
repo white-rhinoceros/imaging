@@ -2,30 +2,28 @@ FROM php:8.3-cli
 
 ARG UID=1000
 ARG GID=1000
+ARG LIBPNG_VERSION
+ARG LIBJPEG_VERSION
+ARG LIBFREETYPE_VERSION
+ARG LIBWEBP_VERSION
+ARG LIBMAGICK_VERSION
+ARG IMAGEMAGICK_VERSION
 
-RUN apt-get update \
-      && apt-get install -y --no-install-recommends \
-          git \
-          unzip \
-          pkg-config \
-          libzip-dev \
-          libpng-dev \
-          libjpeg62-turbo-dev \
-          libfreetype6-dev \
-          libwebp-dev \
-          libmagickwand-dev \
-          imagemagick \
-          libsqlite3-dev \
-      && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-      && docker-php-ext-install -j"$(nproc)" \
-          exif \
-          gd \
-          pdo_sqlite \
-          zip \
-      && pecl install imagick xdebug \
-      && docker-php-ext-enable imagick xdebug \
-      && apt-get clean \
-      && rm -rf /var/lib/apt/lists/*
+COPY docker/scripts/ /tmp/docker-scripts/
+
+RUN chmod +x /tmp/docker-scripts/*.sh \
+    && /tmp/docker-scripts/install-system-packages.sh \
+    && LIBPNG_VERSION="${LIBPNG_VERSION:-}" \
+       LIBJPEG_VERSION="${LIBJPEG_VERSION:-}" \
+       LIBFREETYPE_VERSION="${LIBFREETYPE_VERSION:-}" \
+       LIBWEBP_VERSION="${LIBWEBP_VERSION:-}" \
+       /tmp/docker-scripts/install-gd.sh \
+    && LIBMAGICK_VERSION="${LIBMAGICK_VERSION:-}" \
+       IMAGEMAGICK_VERSION="${IMAGEMAGICK_VERSION:-}" \
+       /tmp/docker-scripts/install-imagick.sh \
+    && /tmp/docker-scripts/install-xdebug.sh \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/docker-scripts
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 

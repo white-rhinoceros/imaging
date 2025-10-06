@@ -171,6 +171,11 @@ final class ImageManager
         return $cached;
     }
 
+    public function pipeline(string $filename, string $cached, bool $force = false): ImagePipeline
+    {
+        return new ImagePipeline($this, $filename, $cached, $force);
+    }
+
     /**
      * Возвращаемы ссылку на кешированное изображение.
      *
