@@ -13,7 +13,7 @@ Laravel package for centralized image processing: resizing, cropping, watermarki
 ### Installation
 1. Require the package via Composer:
    ```shell
-   composer require white-rhinoceros/imaging
+   composer require white-rhinoceros/imaging:^0.1
    ```
 2. Publish the configuration (and optionally translations):
    ```shell

@@ -13,7 +13,7 @@ Laravel-пакет для централизованной обработки и
 ### Установка
 1. Установите пакет через Composer:
    ```shell
-   composer require white-rhinoceros/imaging
+   composer require white-rhinoceros/imaging:^0.1
    ```
 2. Опубликуйте конфигурацию и (опционально) языковые файлы:
    ```shell
