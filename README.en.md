@@ -96,6 +96,28 @@ $customManager = new ImageManager(
 );
 ```
 
+#### Fluent pipeline
+Build readable processing chains with `ImageManager::pipeline()`:
+
+```php
+use Whiterhino\Imaging\ImageManager;
+use Whiterhino\Imaging\Types\{XPositionType, YPositionType};
+
+[$cached, $url] = App::make(ImageManager::class, ['public'])
+    ->pipeline('products/sku-1.jpg', 'products/cache/sku-1-thumb')
+    ->resize(600, 400, keepRatio: true, pad: true)
+    ->rotate(90)
+    ->watermark(
+        storage_path('app/watermarks/default.png'),
+        XPositionType::RIGHT,
+        YPositionType::BOTTOM,
+        24
+    )
+    ->runWithUrl();
+```
+
+Available helpers: `resize()`, `crop()`, `rotate()`, `watermark()` and `call()` for custom callbacks. Use `force(true)` before `run()` if you need to refresh the cached image.
+
 ### Testing
 The repository includes Docker tooling for isolated test runs.
 
@@ -127,7 +149,7 @@ The repository includes Docker tooling for isolated test runs.
 #### Visual tests & snapshots
 Visual tests ensure GD and Imagick produce consistent imagery. Two directories are involved:
 - `tests/Fixtures/process/<handler>/input` and `.../output` — transient files generated during snapshot refresh; useful for visual inspection.
-- `tests/Fixtures/snapshots/<handler>/*.png` — canonical results that regular test runs compare against (via MD5).
+- `tests/Fixtures/snapshots/<handler>/*.png` — canonical results that regular test runs compare against (pixel-by-pixel).
 
 **Mandatory step before running the full suite:** generate snapshots once.
 ```shell
@@ -148,7 +170,10 @@ This does two things:
 1. Stores the current inputs/outputs in `process/` to inspect them manually.
 2. Updates the snapshot files in `snapshots/` that regular tests compare with.
 
-During a normal `composer test` run no `process/` files are written — the test reads the latest processed image from cache, compares it to the snapshot, and deletes the temporary file. If the snapshot is missing, the test is skipped. Therefore, whenever logic changes, regenerate snapshots with the commands above.
+During a normal `composer test` run no `process/` files are written — tests are run that also generate images, 
+they are temporarily stored in the cache and are not available to the user. Next, the test reads the result from the cache, 
+compares it with the corresponding file in `snapshots/` and deletes the intermediate data. If there is no snapshot, 
+the test is marked `skipped'. Therefore, after any revision of the logic, be sure to update the standards.
 
 #### Coverage
 - `composer test:coverage` — local coverage report (requires Xdebug).
