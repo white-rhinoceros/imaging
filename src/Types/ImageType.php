@@ -28,8 +28,10 @@ enum ImageType: int
      */
     public static function getType(string $ext): ?ImageType
     {
+        $ext = strtolower(ltrim(trim($ext), '.'));
+
         foreach (self::IMAGETYPE_TO_POSSIBLE_EXTENSION as $key => $extensions) {
-            if (in_array($ext, self::IMAGETYPE_TO_POSSIBLE_EXTENSION[$key])) {
+            if (in_array($ext, $extensions, true)) {
                 return self::from($key);
             }
         }
